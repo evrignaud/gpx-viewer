@@ -2,11 +2,12 @@
 
 ## Getting started
 
-This GPX Viewer is able to load many tracks at a time.
-It allows you to compare them.
+This GPX Viewer is able to load many tracks at a time.<br/>
+It allows you to compare them.<br/>
 You can use many different map layers.
 
-You can try it here: http://evrignaud.github.io/gpx-viewer/
+You can try it here: http://evrignaud.github.io/gpx-viewer/<br/>
+**Just drag & drop GPX files in it.**
 
 ## Building & running it yourself
 
