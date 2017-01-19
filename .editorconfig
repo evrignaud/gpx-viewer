@@ -1,0 +1,21 @@
+# EditorConfig is awesome: http://EditorConfig.org
+# Information regarding properties:
+#     https://github.com/editorconfig/editorconfig/wiki/EditorConfig-Properties
+
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+charset = utf-8
+indent_size = 2
+indent_style = space
+
+curly_bracket_next_line = false
+indent_brace_style = 1TBS
+spaces_around_operators = true
+spaces_around_brackets = none
+
+[*.xml]
+indent_size = 4
