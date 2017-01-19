@@ -1,0 +1,119 @@
+
+body {
+  font-family: 'Lato', sans-serif;
+  font-size: 1.6em;
+  background-color: #eeeeee;
+}
+
+.splash {
+  text-align: center;
+  position: fixed;
+  top: 50%;
+  width: 100%;
+  height: 16em;
+  margin-top: -8em; /* set to a negative number 1/2 of your height */
+}
+
+.splash .message {
+  font-size: 3em;
+  text-shadow: rgba(0, 0, 0, 0.5) 0 0 15px;
+  width: 100%;
+}
+
+.splash .fa-spinner {
+  text-align: center;
+  display: inline-block;
+  font-size: 5em;
+  margin-top: 50px;
+}
+
+.unsupported-browser {
+  text-align: center;
+  position: fixed;
+  top: 40%;
+  margin-top: -5em; /* set to a negative number 1/2 of your height */
+  padding-left: 20px;
+  padding-right: 20px;
+  width: 100%;
+  height: 10em;
+}
+
+.unsupported-browser-error-title {
+  font-size: 2em;
+  width: 100%;
+  text-shadow: rgba(0, 0, 0, 0.5) 0 0 15px;
+  color: red;
+  margin-bottom: 20px;
+}
+
+.unsupported-browser-error-message {
+  font-size: 1.5em;
+  width: 100%;
+  margin-bottom: 40px;
+}
+
+.input-group-addon-no-border {
+  background-color: inherit;
+  border: inherit;
+}
+
+.inverted-text, .inverted-text:hover {
+  color: white;
+}
+
+:checked + span {
+  font-weight: bold;
+}
+
+.fully-centered {
+  position: absolute;
+  width: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.map {
+  width: 100vw;
+  height: 100vh;
+}
+
+.leaflet-control-graphicscale {
+  color: #017a00;
+}
+
+.leaflet-control-graphicscale .label {
+  color: #017a00;
+}
+
+.lime-theme.leaflet-control.elevation .background {
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+#info-panel {
+  font-family: 'Lato', sans-serif;
+  font-size: 1.2em;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  position: fixed;
+  left: 0px;
+  margin-left: 10px;
+  padding: 6px 8px;
+  border-radius: 5px;
+}
+
+.info-name {
+  margin-top: 5px;
+}
+
+.info-separator {
+  margin-top: 5px;
+  margin-bottom: 5px;
+  border: 0;
+  border-top: 1px solid #333;
+}
+
+.lime-theme.leaflet-control.elevation .background {
+  width: 60vw;
+}
+
+/*# sourceMappingURL=app.e8ab13607b9eb33e7e95.bundle.map*/
