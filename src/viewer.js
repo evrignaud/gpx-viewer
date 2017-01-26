@@ -70,7 +70,8 @@ function initMap () {
 
   L.control.graphicScale({}).addTo(globalMap)
 
-  elevation = L.control.elevation({width: 1200})
+  const screenWidth = $(window).width()
+  elevation = L.control.elevation({width: screenWidth * 0.6})
   elevation.addTo(globalMap)
 
   const isSelected = function (providerName) {

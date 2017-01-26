@@ -111,7 +111,3 @@ body {
   border: 0;
   border-top: 1px solid #333;
 }
-
-.lime-theme.leaflet-control.elevation .background {
-  width: 60vw;
-}
