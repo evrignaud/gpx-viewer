@@ -2,7 +2,7 @@
   "name": "gpx-viewer",
   "version": "0.1.1",
   "description": "GPX Viewer.",
-  "main": "src/main.js",
+  "main": "electron-main.js",
   "scripts": {
     "clean": "yarn cache clean && del-cli dist deps node_modules \"test/coverage\" bin",
     "clean:dist": "del-cli dist",
@@ -26,9 +26,10 @@
     "server:prod": "http-server bin --cors",
     "webpack": "cross-env BABEL_ENV=node ./node_modules/.bin/webpack",
     "webpack-dev-server": "cross-env BABEL_ENV=node ./node_modules/.bin/webpack-dev-server",
-    "prepare": "yarn run clean:dist ; ./retreive-github-deps.sh",
+    "prepare": "yarn run clean:dist ; del-cli electron-dist ; ./retreive-github-deps.sh",
     "lint": "eslint src/**",
-    "update-deps": "yarn-update"
+    "update-deps": "yarn-update",
+    "build-electron-dist": "yarn run build:prod ; electron-packager dist --platform=linux --all --out=./electron-dist"
   },
   "keywords": [
     "map",
@@ -108,6 +109,8 @@
     "concurrently": "3.1.0",
     "cross-env": "3.1.4",
     "del-cli": "0.2.1",
+    "electron": "1.4.15",
+    "electron-packager": "^8.5.1",
     "eslint": "3.14.1",
     "http-server": "0.9.0",
     "webpack": "2.1.0-beta.27",

@@ -101,19 +101,21 @@ let config = generateConfig(
   ...(ENV === 'production' || ENV === 'development' ? [
     commonChunksOptimize({appChunkName: 'app', firstChunk: 'bootstrap'}),
     copyFiles({patterns: [
+      { from: 'package.json', to: 'package.json' },
+      { from: 'electron-main.js', to: 'electron-main.js' },
       { from: 'favicon.ico', to: 'favicon.ico' },
       { from: 'images', to: 'libs/images' },
-      { from: 'node_modules/d3/d3.js', to: 'libs/' },
+      { from: 'node_modules/d3/d3.js', to: 'libs/', transform: renameExports },
       { from: 'node_modules/leaflet.layerscontrol-minimap/control.layers.minimap.css', to: 'libs/' },
-      { from: 'node_modules/leaflet.layerscontrol-minimap/L.Control.Layers.Minimap.js', to: 'libs/' },
+      { from: 'node_modules/leaflet.layerscontrol-minimap/L.Control.Layers.Minimap.js', to: 'libs/', transform: renameExports },
       { from: 'node_modules/leaflet/dist/leaflet.css', to: 'libs/' },
-      { from: 'node_modules/leaflet/dist/leaflet-src.js', to: 'libs/leaflet.js' },
-      { from: 'deps/leaflet.elevation.js', to: 'libs/' },
+      { from: 'node_modules/leaflet/dist/leaflet-src.js', to: 'libs/leaflet.js', transform: renameExports },
+      { from: 'deps/leaflet.elevation.js', to: 'libs/', transform: renameExports },
       { from: 'deps/leaflet.elevation.css', to: 'libs/' },
       { from: 'node_modules/leaflet-graphicscale/dist/Leaflet.GraphicScale.min.css', to: 'libs/' },
-      { from: 'node_modules/leaflet-graphicscale/src/Leaflet.GraphicScale.js', to: 'libs/' },
+      { from: 'node_modules/leaflet-graphicscale/src/Leaflet.GraphicScale.js', to: 'libs/', transform: renameExports },
       { from: 'deps/leaflet-gpx.js', to: 'libs/' },
-      { from: 'node_modules/leaflet-providers/leaflet-providers.js', to: 'libs/' },
+      { from: 'node_modules/leaflet-providers/leaflet-providers.js', to: 'libs/', transform: renameExports },
       { from: 'node_modules/normalize.css/normalize.css', to: 'libs/' }
     ]})
   ] : [
@@ -124,6 +126,15 @@ let config = generateConfig(
   ENV === 'production' ?
     uglify({debug: false, mangle: { except: ['cb', '__webpack_require__'] }}) : {}
 )
+
+// Rename the exports in order to be able to load all those dependencies into electron
+// We want to load them directly from index.html without using the Node modules mechanism
+function renameExports (content, path) {
+  content = content.toString('utf8')
+  content = content.replace(/exports/g, 'dummy_exports')
+  content = Buffer.from(content, 'utf8')
+  return content
+}
 
 // -------------------------------------------------------------
 

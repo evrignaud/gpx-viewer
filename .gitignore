@@ -9,3 +9,4 @@ npm-debug.log*
 /release
 /test/coverage
 /deps/
+/electron-dist/
