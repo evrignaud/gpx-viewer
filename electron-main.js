@@ -1,3 +1,5 @@
+// This is the main part of the electron application
+
 const {app, BrowserWindow} = require('electron')
 
 let mainWindow = null
