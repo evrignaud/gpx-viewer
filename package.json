@@ -23,7 +23,7 @@
     "lint:fix": "eslint . --fix",
     "clean": "rimraf dist electron-dist",
     "electron": "npm run build && electron .",
-    "electron:package": "npm run build && electron-packager . GpxViewer --overwrite --out=electron-dist --ignore=\"^/(src|styles|images|electron-dist|\\.github)\""
+    "electron:package": "npm run build && electron-packager . GpxViewer --overwrite --out=electron-dist --ignore=\"^/(src|styles|images|public|node_modules|electron-dist|\\.tmp-verify|\\.github)\""
   },
   "keywords": [
     "map",

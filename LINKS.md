@@ -1,15 +1,20 @@
 ## Interesting GPX web sites
 
-* GraphHopper Maps - https://graphhopper.com/maps/
+All links checked and switched to https.
 
-* GPX Viewer with colored elevation - http://maplorer.com/view_gpx_fr.html 
+* GraphHopper Maps - <https://graphhopper.com/maps/>
 
-* GPS Visualizer - http://www.gpsvisualizer.com
+* GPX Viewer with coloured elevation - <https://maplorer.com/view_gpx_fr.html>
 
-* Graph My Run - http://www.graphmyrun.com/graph.html
+* GPS Visualizer - <https://www.gpsvisualizer.com>
 
-* GPS track log viewer - http://gpx.tomaskafka.com/
+* VisuGPX, including tools for fixing GPX files and computing elevation -
+  <https://www.visugpx.com/>
 
-* GPXTools for fixing GPX files (mainly compute elevation)- http://www.visugpx.com/outils/
+* Tools to convert formats - <https://geojson.io>
 
-* Tools to convert formats - http://geojson.io
+Removed as dead:
+
+* Graph My Run (`graphmyrun.com`) - the domain no longer resolves.
+* GPS track log viewer (`gpx.tomaskafka.com`) - returns 404, and its certificate
+  no longer validates.
