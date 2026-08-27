@@ -103,11 +103,23 @@ and the integration check as a second job. Two things that job needs on a Linux
 runner, both of which have already caught us out once:
 
 - `xvfb-run`, because Electron wants an X display even for a hidden window.
-- `--no-sandbox`. Chromium's sandbox needs unprivileged user namespaces, and
-  Ubuntu 23.10 and later block those by default through AppArmor, so Electron
-  aborts during start-up instead of running unsandboxed. The switch is set in
-  `test/integration/run.js` rather than in the workflow, so a local run uses the
-  same configuration as CI.
+- `--no-sandbox`. Electron ships `chrome-sandbox`, its SUID sandbox helper, which
+  has to be owned by root with mode 4755. Unpacked by `npm ci` as an ordinary
+  user it is not, so Electron aborts during start-up rather than run
+  unsandboxed:
+
+  > The SUID sandbox helper binary was found, but is not configured correctly.
+  > Rather than run without sandboxing I'm aborting now.
+
+  It has to be a real command-line argument. Setting it with
+  `app.commandLine.appendSwitch` from inside the main script does not work,
+  because Chromium sets the sandbox up before Electron evaluates that script.
+  It therefore lives in the `test:integration:run` npm script, which both a
+  local run and the workflow go through, so the two cannot drift apart.
+
+  The alternative is `chown root` plus `chmod 4755` on `chrome-sandbox`, which
+  keeps the sandbox but needs `sudo` in CI. Not worth it for a harness that only
+  ever loads this project's own build from localhost.
 
 ## Releasing
 

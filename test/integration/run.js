@@ -20,20 +20,22 @@ import { Checks, inPage, startServer, write } from './harness.js'
 const here = path.dirname(fileURLToPath(import.meta.url))
 const dist = path.resolve(here, '..', '..', 'dist')
 
-// Chromium's sandbox needs unprivileged user namespaces. Ubuntu 23.10 and later,
-// which includes the ubuntu-latest CI runner, block those by default through
-// AppArmor, and Electron then aborts during start-up rather than run unsandboxed.
-// Set unconditionally instead of only under CI, so a local run exercises the same
-// configuration as the pipeline.
-//
-// This is a test harness loading its own build from localhost, so giving up the
-// sandbox here costs nothing. Nothing in the application does this.
-app.commandLine.appendSwitch('no-sandbox')
-app.commandLine.appendSwitch('disable-setuid-sandbox')
 // Software rendering: CI runners have no GPU, and /dev/shm is small on some of
-// them, which crashes the renderer.
+// them, which crashes the renderer. These are safe to set from here because
+// Chromium reads them after the main script has run.
 app.commandLine.appendSwitch('disable-gpu')
 app.commandLine.appendSwitch('disable-dev-shm-usage')
+
+// --no-sandbox is deliberately NOT set here, and must not be moved into this
+// file. Chromium sets up its SUID sandbox host before Electron evaluates the
+// main script, so by the time this code runs the decision has already been made
+// and the process has already aborted with:
+//
+//   The SUID sandbox helper binary was found, but is not configured correctly.
+//   Rather than run without sandboxing I'm aborting now.
+//
+// It therefore has to be an actual command-line argument, which is why the
+// npm "test:integration:run" script passes it. See the README.
 
 const checks = new Checks()
 

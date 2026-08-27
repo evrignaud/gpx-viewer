@@ -67,7 +67,10 @@ jobs:
         run: npm run build
 
       # Electron needs an X display even for a hidden window, which a Linux
-      # runner does not have. Runs the checker directly rather than through
-      # npm run test:integration, which would build a second time.
+      # runner does not have.
+      #
+      # Uses the :run script rather than test:integration, which would build a
+      # second time, and rather than calling electron directly, so the required
+      # --no-sandbox argument is defined in exactly one place.
       - name: Run integration check under a virtual display
-        run: xvfb-run --auto-servernum npx electron test/integration/run.js
+        run: xvfb-run --auto-servernum npm run test:integration:run
