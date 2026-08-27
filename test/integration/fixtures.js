@@ -31,6 +31,31 @@ ${points}
 export const TRACK_A = makeGpx({ name: 'Alpha Ridge' })
 export const TRACK_B = makeGpx({ name: 'Beta Loop', lat: 45.94, lon: 6.16, count: 30, baseElevation: 900 })
 
+/**
+ * A valid track carrying no <ele> elements. Plenty of real GPX files are like
+ * this, and it used to make the elevation chart vanish with nothing to say why.
+ */
+export function makeGpxWithoutElevation ({ name, lat = 46.2, lon = 6.4, count = 25 }) {
+  const start = Date.parse('2024-05-01T08:00:00Z')
+  const points = Array.from({ length: count }, (_, i) => {
+    const pointLat = (lat + i * 0.0004).toFixed(6)
+    const pointLon = (lon + i * 0.0004).toFixed(6)
+    const time = new Date(start + i * 5000).toISOString()
+    return `    <trkpt lat="${pointLat}" lon="${pointLon}"><time>${time}</time></trkpt>`
+  }).join('\n')
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="gpx-viewer-tests" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata><name>${name}</name></metadata>
+  <trk><name>${name}</name><trkseg>
+${points}
+  </trkseg></trk>
+</gpx>
+`
+}
+
+export const FLAT_TRACK = makeGpxWithoutElevation({ name: 'Flat, no elevation' })
+
 // Well-formed enough to reach the parser, but with nothing parseable in it.
 export const NO_TRACKS = '<?xml version="1.0"?><gpx version="1.1"></gpx>'
 

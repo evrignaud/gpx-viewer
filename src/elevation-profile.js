@@ -84,6 +84,7 @@ const ElevationProfile = L.Control.extend({
     this._tracks = new Map()
     this._nextId = 0
     this._hoverMarker = null
+    this._userHidden = false
     this._units?.onChange(() => this._render())
   },
 
@@ -100,6 +101,9 @@ const ElevationProfile = L.Control.extend({
     this._svg = select(container).append('svg')
     this._tooltip = L.DomUtil.create('div', 'elevation-tooltip', container)
     this._tooltip.hidden = true
+    // Shown when tracks are loaded but carry no elevation.
+    this._message = L.DomUtil.create('div', 'elevation-empty', container)
+    this._message.hidden = true
 
     this._onResize = () => this._render()
     map.on('resize', this._onResize)
@@ -121,23 +125,44 @@ const ElevationProfile = L.Control.extend({
 
   /**
    * Adds one track's profile. Returns an id usable with `removeTrack`.
+   *
+   * A track with no <ele> data is still registered, with hasElevation false.
+   * Plenty of GPX files carry no elevation at all, and dropping such a track on
+   * the floor here meant the chart silently stayed hidden with nothing to explain
+   * why the track had appeared on the map but produced no profile.
    */
   addTrack (polyline, { color = '#3388ff', name = '' } = {}) {
     const points = samplePolyline(polyline)
-    if (points.length < 2) {
-      return null
-    }
+    const hasElevation = points.length >= 2
 
     const id = ++this._nextId
     this._tracks.set(id, {
       id,
       name,
       color,
-      points,
-      rendered: decimate(points, MAX_RENDERED_POINTS)
+      hasElevation,
+      points: hasElevation ? points : [],
+      rendered: hasElevation ? decimate(points, MAX_RENDERED_POINTS) : []
     })
     this._render()
     return id
+  },
+
+  /**
+   * Whether the user has folded the chart away.
+   *
+   * A method, not a getter: Leaflet's Class.extend copies the properties it is
+   * given with a plain `for..in` assignment, which invokes a getter at definition
+   * time and stores its result. A `get userHidden()` here silently became the
+   * constant undefined.
+   */
+  isUserHidden () {
+    return this._userHidden
+  },
+
+  setUserHidden (hidden) {
+    this._userHidden = Boolean(hidden)
+    this._render()
   },
 
   removeTrack (id) {
@@ -165,6 +190,11 @@ const ElevationProfile = L.Control.extend({
 
   _visibleTracks () {
     return [...this._tracks.values()].filter((track) => !track.hidden)
+  },
+
+  /** Visible tracks that actually have something to plot. */
+  _plottableTracks () {
+    return this._visibleTracks().filter((track) => track.hasElevation)
   },
 
   // Unit conversion, with a metric fallback so the control still works when it
@@ -218,13 +248,47 @@ const ElevationProfile = L.Control.extend({
       return
     }
 
-    const tracks = this._visibleTracks()
-    this._container.hidden = tracks.length === 0
-    if (tracks.length === 0) {
+    const visible = this._visibleTracks()
+    const tracks = this._plottableTracks()
+
+    const blank = () => {
       this._svg.selectAll('*').remove()
+      this._svg.attr('width', 0).attr('height', 0)
+      this._tooltip.hidden = true
       this._clearHoverMarker()
+    }
+
+    // Folded away on purpose.
+    if (this._userHidden) {
+      this._container.hidden = true
+      blank()
       return
     }
+
+    // Nothing loaded yet: no chart, and the map stays clear.
+    if (visible.length === 0) {
+      this._container.hidden = true
+      this._message.hidden = true
+      blank()
+      return
+    }
+
+    // Tracks are loaded but none of them carries elevation. Say so, rather than
+    // hiding and leaving the absence unexplained.
+    if (tracks.length === 0) {
+      this._container.hidden = false
+      this._message.textContent = visible.length === 1
+        ? 'No elevation data in this track'
+        : 'No elevation data in these tracks'
+      this._message.hidden = false
+      blank()
+      return
+    }
+
+    // Must be set here as well as in the branches above: the container starts
+    // hidden, and the drawing path is the only thing that brings it back.
+    this._container.hidden = false
+    this._message.hidden = true
 
     const { width, height, margin, compact } = this._measure()
     this._container.classList.toggle('is-compact', compact)

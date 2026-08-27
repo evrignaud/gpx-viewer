@@ -14,7 +14,9 @@ Try it here: <https://evrignaud.github.io/gpx-viewer/>
 - Load any number of GPX tracks at once, each drawn in its own colour.
 - Elevation profile for every loaded track, overlaid from a common origin so the
   climbs line up and can be compared. Hovering the chart marks the matching point
-  on the map.
+  on the map. Not every GPX file carries elevation data; when none of the loaded
+  tracks does, the panel says so rather than quietly disappearing. The "Elevation"
+  button hides and shows it, and remembers the choice.
 - Per-track list with a checkbox to show or hide a track, a button to re-frame the
   map on it, and a button to remove it. Hiding a track also drops it from the
   elevation chart and from the totals.

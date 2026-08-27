@@ -14,7 +14,7 @@ import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { NOT_GPX, NO_TRACKS, TRACK_A, TRACK_B } from './fixtures.js'
+import { FLAT_TRACK, NOT_GPX, NO_TRACKS, TRACK_A, TRACK_B } from './fixtures.js'
 import { Checks, inPage, startServer, write } from './harness.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -243,6 +243,52 @@ async function checkDesktop (port) {
     await wait(200)
     out.hoverCleared = document.querySelectorAll('path.elevation-hover-marker').length === 0
 
+    // --- a track with no elevation must say so, not vanish -----------------
+    const elevationBox = () => document.querySelector('.elevation-profile')
+    const emptyNote = () => document.querySelector('.elevation-empty')
+
+    // Clear the decks, then load a track that carries no <ele> at all.
+    document.getElementById('tracks-remove-all').click()
+    await wait(600)
+    out.chartWithNoTracks = { hidden: elevationBox().hidden }
+
+    drop([['flat.gpx', ${JSON.stringify(FLAT_TRACK)}]])
+    await wait(2500)
+    out.noElevation = {
+      trackLoaded: rows().length === 1,
+      distanceShown: text('.info-distance'),
+      boxVisible: !elevationBox().hidden,
+      noteShown: !emptyNote().hidden,
+      note: emptyNote().textContent,
+      chartLines: document.querySelectorAll('.elevation-line').length
+    }
+
+    // Add one that does have elevation: the chart must come back and the note go.
+    drop([['alpha3.gpx', ${JSON.stringify(TRACK_A)}]])
+    await wait(2500)
+    out.mixedElevation = {
+      boxVisible: !elevationBox().hidden,
+      noteShown: !emptyNote().hidden,
+      chartLines: document.querySelectorAll('.elevation-line').length
+    }
+
+    // --- the toolbar toggle ------------------------------------------------
+    const elevationToggle = document.getElementById('elevation-toggle')
+    out.elevationToggle = { pressedInitially: elevationToggle.getAttribute('aria-pressed') }
+    elevationToggle.click()
+    await wait(400)
+    out.elevationToggle.hidden = {
+      pressed: elevationToggle.getAttribute('aria-pressed'),
+      boxHidden: elevationBox().hidden
+    }
+    elevationToggle.click()
+    await wait(400)
+    out.elevationToggle.shown = {
+      pressed: elevationToggle.getAttribute('aria-pressed'),
+      boxHidden: elevationBox().hidden,
+      chartLines: document.querySelectorAll('.elevation-line').length
+    }
+
     // --- bad input surfaces an error, it is not swallowed ------------------
     drop([['empty.gpx', ${JSON.stringify(NO_TRACKS)}]])
     await wait(1200)
@@ -328,6 +374,31 @@ async function checkDesktop (port) {
   c.ok('hover: cursor line shown', result.hover?.cursorVisible)
   c.equal('hover: matching point marked on the map', result.hover?.mapMarkers, 1)
   c.ok('hover: marker cleared on leaving the chart', result.hoverCleared)
+
+  c.ok('no tracks: the chart stays out of the way', result.chartWithNoTracks?.hidden)
+
+  const flat = result.noElevation || {}
+  c.ok('no elevation: the track still loads', flat.trackLoaded)
+  c.ok('no elevation: its distance is still reported', Number(flat.distanceShown) > 0, flat.distanceShown)
+  // The reported bug: the box simply disappeared, with nothing to explain it.
+  c.ok('no elevation: the box is shown rather than hidden', flat.boxVisible)
+  c.ok('no elevation: it says why there is no profile', flat.noteShown, flat.note)
+  c.ok('no elevation: the note names the cause',
+    /no elevation data/i.test(flat.note || ''), flat.note)
+  c.equal('no elevation: nothing is plotted', flat.chartLines, 0)
+
+  const mixed = result.mixedElevation || {}
+  c.ok('mixed: the chart returns once a track has elevation', mixed.boxVisible)
+  c.ok('mixed: the note goes away', !mixed.noteShown)
+  c.equal('mixed: only the track with elevation is plotted', mixed.chartLines, 1)
+
+  const toggle = result.elevationToggle || {}
+  c.equal('toggle: starts pressed, meaning shown', toggle.pressedInitially, 'true')
+  c.equal('toggle: one click hides the box', toggle.hidden?.boxHidden, true)
+  c.equal('toggle: and reports itself as off', toggle.hidden?.pressed, 'false')
+  c.equal('toggle: a second click shows it again', toggle.shown?.boxHidden, false)
+  c.equal('toggle: and reports itself as on', toggle.shown?.pressed, 'true')
+  c.equal('toggle: the chart is redrawn, not merely revealed', toggle.shown?.chartLines, 1)
 
   const errors = result.errors || []
   c.ok('bad input: a GPX with no tracks reports an error',

@@ -415,6 +415,35 @@ body {
   display: none;
 }
 
+/* Shown when tracks are loaded but none of them carries elevation. */
+.elevation-empty {
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  color: #555555;
+  white-space: nowrap;
+}
+
+.elevation-empty[hidden] {
+  display: none;
+}
+
+/* Little mountain glyph on the toolbar toggle. */
+.elevation-icon {
+  width: 0.9rem;
+  height: 0.7rem;
+  clip-path: polygon(0% 100%, 38% 22%, 58% 58%, 74% 34%, 100% 100%);
+  background: currentcolor;
+}
+
+.button.is-off {
+  color: #888888;
+  background: #f0f0f0;
+}
+
+.button.is-off .elevation-icon {
+  opacity: 0.5;
+}
+
 /* --------------------------------------------------------------- notices --- */
 
 #notices {

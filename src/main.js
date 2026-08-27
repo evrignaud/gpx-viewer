@@ -13,6 +13,7 @@ import { appVersion, logger } from './config.js'
 import { domControl } from './dom-control.js'
 import { installDropTarget } from './drop-target.js'
 import { elevationProfile } from './elevation-profile.js'
+import { installElevationToggle } from './elevation-toggle.js'
 import { installFilePicker } from './file-picker.js'
 import { InfoPanel } from './info-panel.js'
 import { createMap } from './map.js'
@@ -47,6 +48,11 @@ function start () {
     button: document.getElementById('unit-toggle'),
     label: document.getElementById('unit-label'),
     units
+  })
+
+  installElevationToggle({
+    button: document.getElementById('elevation-toggle'),
+    elevation
   })
 
   const infoPanel = new InfoPanel(document.getElementById('info-panel'), units)
