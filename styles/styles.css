@@ -17,15 +17,31 @@ body {
   font-size: 100%;
   background-color: #eeeeee;
   overflow: hidden;
+  /* Stops iOS from bumping up font sizes when the device is turned sideways. */
+  -webkit-text-size-adjust: 100%;
 }
 
 #app {
   height: 100%;
+  /* dvh tracks the retracting browser chrome on mobile; without it the bottom
+     of the map sat underneath the address bar. */
+  height: 100dvh;
 }
 
 .map {
   width: 100%;
   height: 100%;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 /* ---------------------------------------------------------------- splash --- */
@@ -114,11 +130,13 @@ body {
   font-size: 0.85rem;
   line-height: 1.45;
   max-width: min(30rem, calc(100vw - 5rem));
+  max-height: calc(100dvh - 12rem);
+  overflow-y: auto;
 }
 
 .info-name {
-  margin: 4px 0;
   font-size: 1rem;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 
@@ -126,6 +144,101 @@ body {
   margin: 5px 0;
   border: 0;
   border-top: 1px solid #333333;
+}
+
+/* Collapsible header, so the panel can be folded away on a small screen
+   instead of covering the map (GitHub issue #2). */
+.panel-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.panel-chevron {
+  margin-left: auto;
+  flex: 0 0 auto;
+  border: solid currentcolor;
+  border-width: 0 2px 2px 0;
+  padding: 3px;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-chevron {
+    transition: none;
+  }
+}
+
+.is-collapsed .panel-chevron {
+  transform: rotate(-45deg);
+}
+
+.panel-body[hidden] {
+  display: none;
+}
+
+/* ------------------------------------------------------------- toolbar --- */
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.file-picker {
+  display: inline-flex;
+}
+
+/* Hidden but still focusable, so the control remains reachable by keyboard and
+   is announced by screen readers through its label. */
+#file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  /* 44px minimum, which is the usual floor for a comfortable touch target. */
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0 12px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+  background: #ffffff;
+  font: inherit;
+  font-size: 0.9rem;
+  color: #222222;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.button:hover {
+  background: #f2f2f2;
+}
+
+.file-picker:focus-within .button,
+.button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* ------------------------------------------------------ elevation profile --- */
@@ -268,4 +381,73 @@ body {
 
 .leaflet-container {
   font-family: var(--font-stack);
+}
+
+/* A long provider list must scroll inside the control rather than run off the
+   bottom of the screen. */
+.leaflet-control-layers-list {
+  max-height: calc(100dvh - 8rem);
+  overflow-y: auto;
+}
+
+/* ------------------------------------------------------------ responsive --- */
+
+@media (max-width: 700px) {
+  #info-panel {
+    font-size: 0.8rem;
+    max-width: calc(100vw - 4.5rem);
+    max-height: calc(100dvh - 16rem);
+  }
+
+  .toolbar {
+    padding: 4px 6px;
+  }
+
+  /* The scale would sit underneath the elevation chart, which spans almost the
+     full width at this size. */
+  .leaflet-control-scale {
+    display: none;
+  }
+
+  #notices {
+    bottom: auto;
+    top: 8px;
+    width: calc(100vw - 1rem);
+  }
+
+  .drop-active::after {
+    font-size: 1.1rem;
+  }
+}
+
+/* Coarse pointers need bigger hit areas than Leaflet's 26px defaults. */
+@media (pointer: coarse) {
+  .leaflet-touch .leaflet-bar a {
+    width: 2.25rem;
+    height: 2.25rem;
+    line-height: 2.25rem;
+  }
+
+  .leaflet-control-layers-toggle {
+    width: 2.75rem;
+    height: 2.75rem;
+    background-size: 1.5rem 1.5rem;
+  }
+
+  .leaflet-control-layers label {
+    display: flex;
+    align-items: center;
+    min-height: 2.25rem;
+  }
+}
+
+/* Very short viewports, e.g. a phone held sideways. */
+@media (max-height: 480px) {
+  #info-panel {
+    max-height: calc(100dvh - 8rem);
+  }
+
+  .leaflet-control-layers-list {
+    max-height: calc(100dvh - 5rem);
+  }
 }

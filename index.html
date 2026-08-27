@@ -39,25 +39,43 @@
     <div id="app">
       <div id="map" class="map"></div>
 
+      <!-- Touch devices have no drag and drop, so a real file picker is the
+           only way in for them. Reported as GitHub issue #2. -->
+      <div id="toolbar" class="panel toolbar">
+        <span class="file-picker">
+          <input id="file-input" type="file" accept=".gpx,application/gpx+xml" multiple>
+          <label class="button" for="file-input">
+            <span aria-hidden="true">&#43;</span> Add GPX
+          </label>
+        </span>
+      </div>
+
       <div id="info-panel" class="panel" hidden>
-        <h4 class="info-name"></h4>
-        <span class="info-start"></span>
-        <br/>
-        Distance:&nbsp;<span class="info-distance"></span>&nbsp;<span class="unit-distance"></span>
-        &mdash; Duration:&nbsp;<span class="info-duration"></span>
-        &mdash; Pace:&nbsp;<span class="info-pace"></span>/<span class="unit-distance"></span>
-        <br/>
-        Elevation:&nbsp;+<span class="info-elevation-gain"></span>&nbsp;<span class="unit-elevation"></span>,
-        -<span class="info-elevation-loss"></span>&nbsp;<span class="unit-elevation"></span>
-        (net:&nbsp;<span class="info-elevation-net"></span>&nbsp;<span class="unit-elevation"></span>)
-        <hr class="info-separator"/>
-        Total distance:&nbsp;<span class="info-total-distance"></span>&nbsp;<span class="unit-distance"></span>
-        &mdash; Total duration:&nbsp;<span class="info-total-duration"></span>
-        &mdash; Total pace:&nbsp;<span class="info-total-pace"></span>/<span class="unit-distance"></span>
-        <br/>
-        Total elevation:&nbsp;+<span class="info-total-elevation-gain"></span>&nbsp;<span class="unit-elevation"></span>,
-        -<span class="info-total-elevation-loss"></span>&nbsp;<span class="unit-elevation"></span>
-        (net:&nbsp;<span class="info-total-elevation-net"></span>&nbsp;<span class="unit-elevation"></span>)
+        <button type="button" id="info-toggle" class="panel-toggle"
+                aria-expanded="true" aria-controls="info-body">
+          <span class="info-name"></span>
+          <span class="panel-chevron" aria-hidden="true"></span>
+        </button>
+
+        <div id="info-body" class="panel-body">
+          <span class="info-start"></span>
+          <br/>
+          Distance:&nbsp;<span class="info-distance"></span>&nbsp;<span class="unit-distance"></span>
+          &mdash; Duration:&nbsp;<span class="info-duration"></span>
+          &mdash; Pace:&nbsp;<span class="info-pace"></span>/<span class="unit-distance"></span>
+          <br/>
+          Elevation:&nbsp;+<span class="info-elevation-gain"></span>&nbsp;<span class="unit-elevation"></span>,
+          -<span class="info-elevation-loss"></span>&nbsp;<span class="unit-elevation"></span>
+          (net:&nbsp;<span class="info-elevation-net"></span>&nbsp;<span class="unit-elevation"></span>)
+          <hr class="info-separator"/>
+          Total distance:&nbsp;<span class="info-total-distance"></span>&nbsp;<span class="unit-distance"></span>
+          &mdash; Total duration:&nbsp;<span class="info-total-duration"></span>
+          &mdash; Total pace:&nbsp;<span class="info-total-pace"></span>/<span class="unit-distance"></span>
+          <br/>
+          Total elevation:&nbsp;+<span class="info-total-elevation-gain"></span>&nbsp;<span class="unit-elevation"></span>,
+          -<span class="info-total-elevation-loss"></span>&nbsp;<span class="unit-elevation"></span>
+          (net:&nbsp;<span class="info-total-elevation-net"></span>&nbsp;<span class="unit-elevation"></span>)
+        </div>
       </div>
 
       <div id="splash" class="splash">

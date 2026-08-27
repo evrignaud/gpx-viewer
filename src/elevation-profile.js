@@ -65,11 +65,16 @@ const ElevationProfile = L.Control.extend({
   options: {
     position: 'bottomright',
     widthRatio: 0.6,
-    minWidth: 260,
+    minWidth: 240,
     heightRatio: 0.22,
-    minHeight: 110,
+    minHeight: 96,
     maxHeight: 190,
-    margin: { top: 10, right: 14, bottom: 22, left: 46 }
+    margin: { top: 10, right: 14, bottom: 22, left: 46 },
+    // Below this map width the chart switches to tighter margins and a shorter
+    // body, so it stays readable on a phone without swallowing the map.
+    compactBelow: 560,
+    compactMargin: { top: 8, right: 10, bottom: 18, left: 34 },
+    compactMaxHeight: 132
   },
 
   initialize (options) {
@@ -160,14 +165,27 @@ const ElevationProfile = L.Control.extend({
   },
 
   _measure () {
+    const options = this.options
     const mapSize = this._map.getSize()
-    const width = Math.max(this.options.minWidth, Math.round(mapSize.x * this.options.widthRatio))
+    const compact = mapSize.x < options.compactBelow
+
+    // Leave room for the Leaflet control gutter so the chart never runs off the
+    // edge of a narrow screen.
+    const available = Math.max(120, mapSize.x - 20)
+    const width = Math.min(available, Math.max(options.minWidth, Math.round(mapSize.x * options.widthRatio)))
+
+    const maxHeight = compact ? options.compactMaxHeight : options.maxHeight
     const height = Math.min(
-      this.options.maxHeight,
-      Math.max(this.options.minHeight, Math.round(mapSize.y * this.options.heightRatio))
+      maxHeight,
+      Math.max(options.minHeight, Math.round(mapSize.y * options.heightRatio))
     )
-    // Never let the chart grow wider than the viewport it sits in.
-    return { width: Math.min(width, mapSize.x - 20), height }
+
+    return {
+      width,
+      height,
+      compact,
+      margin: compact ? options.compactMargin : options.margin
+    }
   },
 
   _render () {
@@ -183,8 +201,8 @@ const ElevationProfile = L.Control.extend({
       return
     }
 
-    const { width, height } = this._measure()
-    const { margin } = this.options
+    const { width, height, margin, compact } = this._measure()
+    this._container.classList.toggle('is-compact', compact)
     const innerWidth = Math.max(10, width - margin.left - margin.right)
     const innerHeight = Math.max(10, height - margin.top - margin.bottom)
 
@@ -219,9 +237,11 @@ const ElevationProfile = L.Control.extend({
 
     const plot = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`)
 
+    const yTicks = compact ? 3 : 4
+
     plot.append('g')
       .attr('class', 'elevation-grid')
-      .call(axisLeft(y).ticks(4).tickSize(-innerWidth).tickFormat(() => ''))
+      .call(axisLeft(y).ticks(yTicks).tickSize(-innerWidth).tickFormat(() => ''))
 
     const areaShape = area()
       .x((point) => x(point.dist / 1000))
@@ -256,11 +276,11 @@ const ElevationProfile = L.Control.extend({
     plot.append('g')
       .attr('class', 'elevation-axis elevation-axis-x')
       .attr('transform', `translate(0,${innerHeight})`)
-      .call(axisBottom(x).ticks(Math.max(2, Math.round(innerWidth / 70))))
+      .call(axisBottom(x).ticks(Math.max(2, Math.round(innerWidth / (compact ? 55 : 70)))))
 
     plot.append('g')
       .attr('class', 'elevation-axis elevation-axis-y')
-      .call(axisLeft(y).ticks(4))
+      .call(axisLeft(y).ticks(yTicks))
 
     plot.append('text')
       .attr('class', 'elevation-axis-label')

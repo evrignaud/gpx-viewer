@@ -4,6 +4,10 @@ import { formatDateTime, formatDuration, formatNumber, formatPace } from './form
  * Renders the summary panel: the most recently loaded track, then the totals
  * across every visible track.
  */
+// Below this width the panel is collapsed by default: at full height it covered
+// most of a phone screen.
+const NARROW_SCREEN = '(max-width: 700px)'
+
 export class InfoPanel {
   constructor (element) {
     this.element = element
@@ -18,6 +22,21 @@ export class InfoPanel {
 
     this.setAll('unit-distance', 'km')
     this.setAll('unit-elevation', 'm')
+
+    this.toggle = element.querySelector('#info-toggle')
+    this.body = element.querySelector('#info-body')
+    this.toggle.addEventListener('click', () => this.setExpanded(!this.expanded))
+    this.setExpanded(!window.matchMedia(NARROW_SCREEN).matches)
+  }
+
+  get expanded () {
+    return this.toggle.getAttribute('aria-expanded') === 'true'
+  }
+
+  setExpanded (expanded) {
+    this.toggle.setAttribute('aria-expanded', String(expanded))
+    this.body.hidden = !expanded
+    this.element.classList.toggle('is-collapsed', !expanded)
   }
 
   set (field, value) {

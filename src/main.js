@@ -5,6 +5,7 @@ import { appVersion, logger } from './config.js'
 import { domControl } from './dom-control.js'
 import { installDropTarget } from './drop-target.js'
 import { elevationProfile } from './elevation-profile.js'
+import { installFilePicker } from './file-picker.js'
 import { InfoPanel } from './info-panel.js'
 import { createMap } from './map.js'
 import { Notices } from './notice.js'
@@ -21,6 +22,9 @@ function start () {
   const elevation = elevationProfile()
   elevation.addTo(map)
 
+  // Toolbar first, so it sits above the info panel in the top-left corner.
+  domControl(document.getElementById('toolbar'), 'topleft').addTo(map)
+
   const infoPanel = new InfoPanel(document.getElementById('info-panel'))
   domControl(infoPanel.element, 'topleft').addTo(map)
 
@@ -31,11 +35,10 @@ function start () {
     onError: (message) => notices.error(message)
   })
 
-  installDropTarget({
-    element: app,
-    map,
-    onFiles: (files) => store.loadFiles(files)
-  })
+  const loadFiles = (files) => store.loadFiles(files)
+
+  installFilePicker({ input: document.getElementById('file-input'), onFiles: loadFiles })
+  installDropTarget({ element: app, map, onFiles: loadFiles })
 
   // Hiding the splash is what the inline check in index.html looks for to decide
   // whether the bundle booted.
