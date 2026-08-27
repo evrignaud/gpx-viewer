@@ -40,7 +40,7 @@ export default [
   },
   {
     // Node-side files: build config and the Electron main process.
-    files: ['vite.config.js', 'vitest.config.js', 'eslint.config.js', 'electron-main.js'],
+    files: ['vite.config.js', 'vitest.config.js', 'eslint.config.js', 'electron-main.js', 'scripts/**/*.js'],
     languageOptions: {
       globals: {
         ...globals.node

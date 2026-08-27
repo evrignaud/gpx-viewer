@@ -102,6 +102,39 @@ checks 74 things, including the two halves of issue #2 (no overlapping panels at
 and the integration check as a second job. On a Linux runner that one needs
 `xvfb-run`, because Electron wants an X display even for an offscreen window.
 
+## Releasing
+
+```shell
+npm run release:dry-run        # rehearse: checks and build, changes nothing
+npm run release                # release the version in package.json
+npm run release -- 0.3.0       # set that version, then release it
+npm run release -- minor       # bump, then release
+```
+
+`scripts/release.js` does the whole thing in order: refuses to start unless the
+working tree is clean and the branch is not behind the remote, optionally bumps
+the version and commits it, lints, tests and builds, tags the release, then
+publishes `dist/` to `gh-pages`.
+
+Worth knowing about how it publishes:
+
+- The `gh-pages` commit is built with git plumbing against a throwaway index, so
+  your working tree, your index and your current branch are never touched. That
+  also sidesteps `dist/` being listed in `.gitignore`.
+- Its tree is built from `dist/` alone, so files from an earlier release
+  disappear rather than lingering.
+- It is parented on the current `origin/gh-pages`, so publishing is an ordinary
+  fast-forward. Nothing is ever force-pushed.
+- The commit message records the source commit, branch, tag and build time, so a
+  published site can always be traced back to the code that produced it.
+- The build is rejected if `index.html` came out with root-absolute asset URLs,
+  which would 404 under the `/gpx-viewer/` sub-path while still working locally.
+- Branch, tag and `gh-pages` are pushed in one `--atomic` push, so a half-released
+  state is not possible.
+
+It shows a summary and asks before pushing anything. Pass `--yes` to skip the
+prompt, or `--help` for the rest of the options.
+
 ### Desktop app
 
 ```shell

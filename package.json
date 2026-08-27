@@ -25,6 +25,8 @@
     "test:watch": "vitest",
     "test:integration": "npm run build && electron test/integration/run.js",
     "check": "npm run lint && npm run test && npm run build",
+    "release": "node scripts/release.js",
+    "release:dry-run": "node scripts/release.js --dry-run",
     "clean": "rimraf dist electron-dist",
     "electron": "npm run build && electron .",
     "electron:package": "npm run build && electron-packager . GpxViewer --overwrite --out=electron-dist --ignore=\"^/(src|styles|images|public|node_modules|electron-dist|\\.tmp-verify|\\.github)\""
