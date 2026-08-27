@@ -1,6 +1,6 @@
 {
   "name": "gpx-viewer",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Web viewer that loads and compares many GPX tracks at once on top of switchable map layers.",
   "type": "module",
   "main": "electron-main.js",

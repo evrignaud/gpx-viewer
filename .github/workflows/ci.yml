@@ -5,6 +5,9 @@ on:
     branches: [master]
   pull_request:
   workflow_dispatch:
+  # Called by release.yml, so a release runs exactly these checks rather than a
+  # second copy of them that could drift.
+  workflow_call:
 
 permissions:
   contents: read
@@ -38,10 +41,6 @@ jobs:
     name: Integration check
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      # Send Chromium's own diagnostics to stderr, so a start-up failure explains
-      # itself in the job log instead of just exiting non-zero.
-      ELECTRON_ENABLE_LOGGING: '1'
     steps:
       - uses: actions/checkout@v7
 
@@ -51,15 +50,6 @@ jobs:
           cache: npm
 
       - run: npm ci
-
-      # Kept as its own step so a missing Electron binary, or a missing system
-      # library, is distinguishable from a genuine test failure. npm ci is quick
-      # enough here that it is worth confirming the binary really was unpacked.
-      - name: Report the Electron environment
-        run: |
-          echo "node    $(node --version)"
-          echo "npm     $(npm --version)"
-          echo "electron $(npx electron --version)"
 
       # Built outside xvfb: the build needs no display, and keeping it separate
       # means a build failure is never mistaken for an Electron one.

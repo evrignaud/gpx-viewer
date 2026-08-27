@@ -9,6 +9,11 @@
  *   5. publishes dist/ to the gh-pages branch,
  *   6. pushes the branch, the tag and gh-pages together.
  *
+ * Pushing the tag also triggers .github/workflows/release.yml, which builds and
+ * publishes on a runner. Publishing is idempotent, so the two cannot fight: if
+ * the branch already holds this exact output, neither adds a commit. Pass
+ * --skip-pages to leave publishing entirely to the workflow.
+ *
  * Usage:
  *   node scripts/release.js                  release the version in package.json
  *   node scripts/release.js 0.3.0            set that version, then release it
@@ -19,6 +24,7 @@
  *   --dry-run          do the checks and the build, change and push nothing
  *   --yes, -y          skip the confirmation prompt
  *   --skip-checks      skip lint and tests (the build still has to succeed)
+ *   --skip-pages       do not publish; let the release workflow do it
  *   --remote <name>    default: origin
  *   --branch <name>    branch to release from, default: master
  *   --pages-branch <n> branch to publish to, default: gh-pages
@@ -26,81 +32,20 @@
  * Written in Node rather than a shell script so it behaves the same on Windows
  * and Linux, and so it can use the repository's own tooling.
  */
-import { execFileSync } from 'node:child_process'
-import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { createInterface } from 'node:readline/promises'
-import { fileURLToPath } from 'node:url'
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const distDir = path.join(repoRoot, 'dist')
-const packageJsonPath = path.join(repoRoot, 'package.json')
-
-// Read straight from disk rather than through import or require, both of which
-// cache: `npm version` rewrites this file part-way through the run.
-const readPackage = () => JSON.parse(readFileSync(packageJsonPath, 'utf8'))
-
-// On Windows npm is a .cmd shim, and since the fix for CVE-2024-27980 Node
-// refuses to spawn .cmd or .bat without a shell, failing with EINVAL. Hence
-// shell: true there. Do not remove it: the script cannot run npm on Windows
-// without it.
-const NEEDS_SHELL = process.platform === 'win32'
+import { fromGitConfig, fromHead, fromTag, resolveIdentity } from './lib/identity.js'
+import { isSemver } from './lib/version.js'
+import { assertRelativeAssetUrls, buildPagesCommit } from './lib/pages.js'
+import {
+  colour, distDir, fail, git, info, note, npm, readPackage, repoRoot, runScript, step, warn
+} from './lib/run.js'
 
 const BUMPS = new Set(['patch', 'minor', 'major'])
-const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
 
-// ---------------------------------------------------------------- utilities ---
-
-const styles = { bold: '\u001B[1m', dim: '\u001B[2m', red: '\u001B[31m', green: '\u001B[32m', yellow: '\u001B[33m', reset: '\u001B[0m' }
-const colour = (name, text) => (process.stdout.isTTY ? `${styles[name]}${text}${styles.reset}` : text)
-
-const step = (message) => console.log(`\n${colour('bold', '==>')} ${colour('bold', message)}`)
-const info = (message) => console.log(`    ${message}`)
-const note = (message) => console.log(`    ${colour('dim', message)}`)
-const warn = (message) => console.log(`    ${colour('yellow', 'warning:')} ${message}`)
-
-class ReleaseError extends Error {}
-
-const fail = (message) => {
-  throw new ReleaseError(message)
-}
-
-function git (args, { input, env, allowFailure = false } = {}) {
-  try {
-    return execFileSync('git', args, {
-      cwd: repoRoot,
-      encoding: 'utf8',
-      input,
-      env: env || process.env,
-      maxBuffer: 64 * 1024 * 1024
-    }).trim()
-  } catch (error) {
-    if (allowFailure) {
-      return null
-    }
-    const detail = `${error.stderr || ''}${error.stdout || ''}`.trim()
-    throw new ReleaseError(`git ${args.join(' ')} failed${detail ? `:\n${detail}` : ''}`, { cause: error })
-  }
-}
-
-function npm (args) {
-  // Going through a shell means arguments are re-parsed by it, so refuse
-  // anything that could be read as shell syntax. Every argument here is either a
-  // literal or a version already matched against SEMVER, so this only guards
-  // against a future edit introducing something unsafe.
-  for (const arg of args) {
-    if (!/^[A-Za-z0-9._@/-]+$/.test(arg)) {
-      fail(`refusing to pass "${arg}" to npm: unexpected characters`)
-    }
-  }
-
-  try {
-    execFileSync('npm', args, { cwd: repoRoot, stdio: 'inherit', shell: NEEDS_SHELL })
-  } catch (error) {
-    fail(`npm ${args.join(' ')} failed`, { cause: error })
-  }
-}
+const readVersion = () => readPackage().version
 
 // ------------------------------------------------------------------- options ---
 
@@ -110,6 +55,7 @@ function parseArgs (argv) {
     dryRun: false,
     yes: false,
     skipChecks: false,
+    skipPages: false,
     remote: 'origin',
     branch: 'master',
     pagesBranch: 'gh-pages'
@@ -129,6 +75,7 @@ function parseArgs (argv) {
       case '--dry-run': options.dryRun = true; break
       case '--yes': case '-y': options.yes = true; break
       case '--skip-checks': options.skipChecks = true; break
+      case '--skip-pages': options.skipPages = true; break
       case '--remote': options.remote = takeValue(arg, i); i++; break
       case '--branch': options.branch = takeValue(arg, i); i++; break
       case '--pages-branch': options.pagesBranch = takeValue(arg, i); i++; break
@@ -140,7 +87,7 @@ function parseArgs (argv) {
         if (options.version) {
           fail(`unexpected extra argument "${arg}"`)
         }
-        if (!BUMPS.has(arg) && !SEMVER.test(arg)) {
+        if (!BUMPS.has(arg) && !isSemver(arg)) {
           fail(`"${arg}" is neither a semver version nor one of patch, minor, major`)
         }
         options.version = arg
@@ -162,15 +109,17 @@ Cut a release of gpx-viewer.
   --dry-run          run the checks and the build, change and push nothing
   --yes, -y          skip the confirmation prompt
   --skip-checks      skip lint and tests
+  --skip-pages       do not publish; let the release workflow do it
   --remote <name>    default: origin
   --branch <name>    branch to release from, default: master
   --pages-branch <n> branch to publish to, default: gh-pages
+
+Pushing the tag also triggers the release workflow, which builds and publishes
+on a runner. Publishing is idempotent, so running both is safe.
 `)
 }
 
 // ----------------------------------------------------------------- preflight ---
-
-const readVersion = () => readPackage().version
 
 function preflight (options) {
   step('Checking the repository')
@@ -206,6 +155,13 @@ function preflight (options) {
     if (behind > 0) {
       fail(`${options.branch} is ${behind} commit(s) behind ${options.remote}/${options.branch}. Pull first.`)
     }
+  }
+
+  // An unpushed commit would be tagged, and the workflow would then build a
+  // commit the remote does not have.
+  const ahead = Number(git(['rev-list', '--count', `${upstream}..HEAD`], { allowFailure: true }) || 0)
+  if (ahead > 0) {
+    info(`${ahead} commit(s) will be pushed along with the tag`)
   }
 
   return branch
@@ -251,8 +207,7 @@ function assertTagFree (tag, options) {
   if (git(['rev-parse', '--verify', '--quiet', `refs/tags/${tag}`], { allowFailure: true })) {
     fail(`tag "${tag}" already exists locally. Delete it, or release a different version.`)
   }
-  const remoteTag = git(['ls-remote', '--tags', options.remote, `refs/tags/${tag}`], { allowFailure: true })
-  if (remoteTag) {
+  if (git(['ls-remote', '--tags', options.remote, `refs/tags/${tag}`], { allowFailure: true })) {
     fail(`tag "${tag}" already exists on ${options.remote}. Releases are not meant to be rewritten.`)
   }
 }
@@ -297,115 +252,8 @@ function build () {
   if (!existsSync(indexHtml)) {
     fail(`the build produced no ${path.relative(repoRoot, indexHtml)}`)
   }
-
-  // GitHub Pages serves this project from the /gpx-viewer/ sub-path, so every
-  // asset URL has to be relative. An absolute one means vite.config.js lost its
-  // `base: './'`, which would break the published site while leaving the local
-  // preview working.
-  const html = readFileSync(indexHtml, 'utf8')
-  const absolute = html.match(/(?:src|href)="\/[^"]*"/g)
-  if (absolute) {
-    fail(`the built index.html has root-absolute asset URLs, which will 404 under a sub-path:\n  ${absolute.join('\n  ')}\n\nCheck that vite.config.js still sets base: './'.`)
-  }
+  assertRelativeAssetUrls(indexHtml)
   info('asset URLs are relative')
-}
-
-// ------------------------------------------------------------ pages publish ---
-
-function collectFiles (dir, prefix = '') {
-  const found = []
-  for (const entry of readdirSync(dir).sort()) {
-    const absolute = path.join(dir, entry)
-    // Always forward slashes: this becomes a path inside a git tree.
-    const repoPath = prefix ? `${prefix}/${entry}` : entry
-    if (statSync(absolute).isDirectory()) {
-      found.push(...collectFiles(absolute, repoPath))
-    } else {
-      found.push({ absolute, repoPath })
-    }
-  }
-  return found
-}
-
-/**
- * Builds a commit whose tree is exactly the contents of dist/, and points the
- * pages branch at it.
- *
- * Done with plumbing against a throwaway index rather than by checking the
- * branch out, so the working tree, the real index and the current branch are
- * never touched. That also sidesteps dist/ being listed in .gitignore.
- *
- * The tree is built from scratch, so files from an earlier release disappear
- * instead of lingering: gh-pages currently still holds webpack-era bundles.
- */
-function buildPagesCommit ({ version, sourceSha, sourceBranch, options }) {
-  step(`Preparing the ${options.pagesBranch} commit`)
-
-  const files = collectFiles(distDir)
-  if (files.length === 0) {
-    fail('dist/ is empty, nothing to publish')
-  }
-
-  const indexFile = path.join(tmpdir(), `gpx-viewer-pages-index-${process.pid}-${Date.now()}`)
-  const env = { ...process.env, GIT_INDEX_FILE: indexFile }
-
-  const entries = []
-  for (const file of files) {
-    // --no-filters keeps the bytes exactly as built. Without it the repository's
-    // `* text=auto` attribute could rewrite line endings inside published
-    // assets, and corrupt the binary ones.
-    const sha = git(['hash-object', '-w', '--no-filters', '--', file.absolute])
-    entries.push(`100644 ${sha}\t${file.repoPath}`)
-  }
-
-  // .nojekyll stops GitHub Pages running the output through Jekyll, which
-  // ignores paths beginning with an underscore.
-  const nojekyll = git(['hash-object', '-w', '--stdin'], { input: '' })
-  entries.push(`100644 ${nojekyll}\t.nojekyll`)
-
-  git(['update-index', '--index-info'], { input: `${entries.join('\n')}\n`, env })
-  const tree = git(['write-tree'], { env })
-
-  rmSync(indexFile, { force: true })
-
-  const parent = git(
-    ['rev-parse', '--verify', '--quiet', `refs/remotes/${options.remote}/${options.pagesBranch}`],
-    { allowFailure: true }
-  )
-
-  if (parent) {
-    const existing = git(['rev-parse', `${parent}^{tree}`])
-    if (existing === tree) {
-      info(`${options.pagesBranch} already publishes exactly this output`)
-    }
-  } else {
-    note(`${options.remote}/${options.pagesBranch} does not exist yet, starting its history`)
-  }
-
-  // The provenance lines are the point of "the accurate commit": they say which
-  // source commit produced the published files.
-  const message = [
-    `Publish gpx-viewer ${version}`,
-    [
-      `Source-Commit: ${sourceSha}`,
-      `Source-Branch: ${sourceBranch}`,
-      `Release-Tag: ${version}`,
-      `Built-At: ${new Date().toISOString()}`
-    ].join('\n')
-  ]
-
-  const commitArgs = ['commit-tree', tree]
-  if (parent) {
-    commitArgs.push('-p', parent)
-  }
-  for (const paragraph of message) {
-    commitArgs.push('-m', paragraph)
-  }
-
-  const commit = git(commitArgs)
-  info(`${files.length + 1} files, tree ${tree.slice(0, 10)}, commit ${commit.slice(0, 10)}`)
-
-  return { commit, parent, fileCount: files.length + 1 }
 }
 
 // ---------------------------------------------------------------------- main ---
@@ -429,7 +277,7 @@ async function confirm (summary, options) {
   }
 }
 
-async function main () {
+await runScript(async () => {
   const options = parseArgs(process.argv.slice(2))
   if (options.help) {
     usage()
@@ -452,7 +300,24 @@ async function main () {
   build()
 
   const sourceSha = git(['rev-parse', 'HEAD'])
-  const pages = buildPagesCommit({ version, sourceSha, sourceBranch: branch, options })
+
+  let pages = null
+  if (options.skipPages) {
+    step('Skipping the pages commit')
+    note('the release workflow will publish when the tag arrives')
+  } else {
+    // git config first here: a person is running this, on their own machine.
+    // Resolved rather than left to git so commit-tree still works if no identity
+    // is configured, which is what broke the same call in CI.
+    pages = buildPagesCommit({
+      version,
+      sourceSha,
+      sourceRef: branch,
+      remote: options.remote,
+      pagesBranch: options.pagesBranch,
+      identity: resolveIdentity([fromGitConfig, fromHead, () => fromTag(version)])
+    })
+  }
 
   step('Tagging')
   if (options.dryRun) {
@@ -467,24 +332,32 @@ async function main () {
   const identity = `${git(['config', 'user.name'])} <${git(['config', 'user.email'])}>`
   const pagesUrl = readPackage().homepage || '(see repository settings)'
 
-  const refspecs = []
-  if (changed) {
-    refspecs.push(`refs/heads/${branch}:refs/heads/${branch}`)
+  const publishing = pages && !pages.unchanged
+
+  const refspecs = [`refs/heads/${branch}:refs/heads/${branch}`, `refs/tags/${version}:refs/tags/${version}`]
+  if (publishing) {
+    refspecs.push(`${pages.commit}:refs/heads/${options.pagesBranch}`)
   }
-  refspecs.push(`refs/tags/${version}:refs/tags/${version}`)
-  refspecs.push(`${pages.commit}:refs/heads/${options.pagesBranch}`)
+
+  let publishedLine = '  published      nothing, the workflow will do it'
+  if (publishing) {
+    publishedLine = `  published      ${pages.fileCount} files as ${pages.commit.slice(0, 10)} on ${options.pagesBranch}`
+  } else if (pages) {
+    publishedLine = `  published      nothing, ${options.pagesBranch} already matches this build`
+  }
 
   const summary = [
     colour('bold', 'Release summary'),
     `  version        ${version}`,
     `  source commit  ${sourceSha.slice(0, 10)} on ${branch}`,
     `  tag            ${version}${options.dryRun ? ' (not created)' : ''}`,
-    `  published      ${pages.fileCount} files as ${pages.commit.slice(0, 10)} on ${options.pagesBranch}`,
+    publishedLine,
     `  committed as   ${identity}`,
     '',
     `  ${colour('bold', 'git push')} --atomic ${options.remote}`,
     ...refspecs.map((refspec) => `    ${refspec}`),
     '',
+    '  pushing the tag also runs .github/workflows/release.yml',
     `  site           ${pagesUrl}`
   ].join('\n')
 
@@ -497,7 +370,7 @@ async function main () {
 
   if (!await confirm(summary, options)) {
     step('Stopped')
-    note(`the tag ${version} and the ${options.pagesBranch} commit exist locally but were not pushed`)
+    note(`the tag ${version} exists locally but was not pushed`)
     note(`to undo: git tag -d ${version}`)
     return
   }
@@ -510,14 +383,5 @@ async function main () {
 
   step(`Released ${version}`)
   info(`${pagesUrl} will update once GitHub Pages rebuilds`)
-}
-
-try {
-  await main()
-} catch (error) {
-  if (error instanceof ReleaseError) {
-    console.error(`\n${colour('red', 'Release aborted:')} ${error.message}`)
-    process.exit(1)
-  }
-  throw error
-}
+  note('watch the release workflow: gh run list --workflow=release.yml')
+})

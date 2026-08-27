@@ -1,0 +1,169 @@
+name: Release
+
+# Triggered by pushing a tag, which is what `npm run release` does at the end,
+# and what `git tag 0.3.0 && git push origin 0.3.0` does by hand.
+#
+# The pattern matches this repository's convention: a bare version with no "v"
+# prefix, as in the existing 0.1.0 tag. In GitHub's filter syntax `+` means one
+# or more of the preceding character, so `[0-9]+` is a run of digits, and the
+# trailing `*` allows pre-releases such as 0.3.0-rc.1.
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+*'
+  # Lets a failed release be re-run against the same tag from the Actions tab,
+  # without having to delete and re-push it.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Stated explicitly rather than read from github.event.repository.default_branch,
+  # which did not resolve in a job-level `name:` and would have produced an empty
+  # push refspec ("HEAD:").
+  DEFAULT_BRANCH: master
+
+concurrency:
+  # Never let two releases publish gh-pages at the same time.
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # Reuses the CI workflow wholesale, so a release cannot publish something that
+  # would have failed the normal checks.
+  verify:
+    name: Verify
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: Publish
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      # Pushing the gh-pages commit, and creating the GitHub release.
+      contents: write
+    outputs:
+      # Reused by sync-version, so both commits carry the same name.
+      author_name: ${{ steps.publish.outputs.author_name }}
+      author_email: ${{ steps.publish.outputs.author_email }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The publish script needs real history to parent the gh-pages commit
+          # on, and the tag's own commit to record as the source.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # The tag is the source of truth for the version. package.json is brought
+      # into line with it here, before the build, so the version the application
+      # reports matches the tag rather than whatever the tagged commit happened
+      # to carry. Not committed in this job: the sync-version job below puts it
+      # on the default branch.
+      - name: Take the version from the tag
+        id: version
+        run: node scripts/sync-version.js --version "${GITHUB_REF_NAME}" --allow-older
+
+      - run: npm run build
+
+      # The build changed package.json in the workspace, which publish-pages does
+      # not care about: it publishes dist/ only.
+      - name: Publish to gh-pages
+        id: publish
+        run: |
+          node scripts/publish-pages.js \
+            --version "${GITHUB_REF_NAME}" \
+            --source-ref "${GITHUB_REF_NAME}"
+
+      # Attaches the build to the tag so a release can be downloaded without
+      # rebuilding it. --generate-notes fills in the changelog from the commits.
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tar -czf "gpx-viewer-${{ github.ref_name }}.tar.gz" -C dist .
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            echo "release already exists, uploading the build to it"
+            gh release upload "${GITHUB_REF_NAME}" \
+              "gpx-viewer-${{ github.ref_name }}.tar.gz" --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              --title "gpx-viewer ${{ github.ref_name }}" \
+              --generate-notes \
+              "gpx-viewer-${{ github.ref_name }}.tar.gz"
+          fi
+
+      - name: Summary
+        run: |
+          {
+            echo "### Released ${{ github.ref_name }}"
+            echo
+            echo "- Source: \`${GITHUB_SHA}\` (\`${GITHUB_REF_NAME}\`)"
+            echo "- Site: $(node -p 'require("./package.json").homepage')"
+            if [ "${{ steps.version.outputs.changed }}" = "true" ]; then
+              echo "- Version taken from the tag, package.json was \
+          \`${{ steps.version.outputs.previous }}\`"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Puts the released version back on the default branch, so package.json stops
+  # disagreeing with the tags. Runs after publishing, so a failure here cannot
+  # stop a release that has already gone out.
+  sync-version:
+    name: Sync the version on the default branch
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      # The default branch, not the tag: this commit belongs on the branch.
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.DEFAULT_BRANCH }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # No --allow-older here. If the tag is behind the branch, the branch is
+      # left alone rather than silently rewound.
+      - name: Take the version from the tag
+        id: version
+        run: node scripts/sync-version.js --version "${GITHUB_REF_NAME}"
+
+      # Attributed to whoever tagged the release, resolved by the publish job,
+      # rather than to a bot. A runner has no git identity of its own, so this
+      # has to be set for the commit to be possible at all.
+      - name: Commit and push
+        if: steps.version.outputs.changed == 'true'
+        env:
+          GIT_AUTHOR_NAME: ${{ needs.publish.outputs.author_name }}
+          GIT_AUTHOR_EMAIL: ${{ needs.publish.outputs.author_email }}
+          GIT_COMMITTER_NAME: ${{ needs.publish.outputs.author_name }}
+          GIT_COMMITTER_EMAIL: ${{ needs.publish.outputs.author_email }}
+        run: |
+          git add package.json package-lock.json
+          git commit -m "Move to ${GITHUB_REF_NAME}" \
+            -m "Set by the release pipeline from tag ${GITHUB_REF_NAME}."
+          # Rejected rather than forced if the branch moved while we were
+          # releasing; the next release will pick the version up again.
+          git push origin "HEAD:${DEFAULT_BRANCH}"
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.version.outputs.changed }}" = "true" ]; then
+            echo "Moved package.json from \`${{ steps.version.outputs.previous }}\` \
+          to \`${GITHUB_REF_NAME}\`." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "package.json already matched the tag, nothing to change." \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi

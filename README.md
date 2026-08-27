@@ -123,6 +123,11 @@ runner, both of which have already caught us out once:
 
 ## Releasing
 
+A release is triggered by **pushing a tag**. Tags are bare versions with no `v`
+prefix, matching the existing `0.1.0`.
+
+Either let the script do it:
+
 ```shell
 npm run release:dry-run        # rehearse: checks and build, changes nothing
 npm run release                # release the version in package.json
@@ -130,10 +135,60 @@ npm run release -- 0.3.0       # set that version, then release it
 npm run release -- minor       # bump, then release
 ```
 
-`scripts/release.js` does the whole thing in order: refuses to start unless the
-working tree is clean and the branch is not behind the remote, optionally bumps
-the version and commits it, lints, tests and builds, tags the release, then
-publishes `dist/` to `gh-pages`.
+or do it by hand, which triggers exactly the same pipeline:
+
+```shell
+git tag -a 0.3.0 -m 'gpx-viewer 0.3.0'
+git push origin master 0.3.0
+```
+
+### What runs on the tag
+
+`.github/workflows/release.yml` fires on any tag shaped like `0.3.0`, and can
+also be re-run from the Actions tab against an existing tag, so a failed release
+does not need the tag deleted and re-pushed. It:
+
+1. runs the whole CI workflow, by calling `ci.yml` rather than repeating its
+   steps, so a release cannot publish something that would have failed the normal
+   checks;
+2. takes the version from the tag, updating `package.json` before building so the
+   app reports the version it was tagged as;
+3. builds, and publishes `dist/` to `gh-pages`;
+4. creates a GitHub release for the tag with generated notes and the build
+   attached as a tarball;
+5. commits the version back to the default branch, so `package.json` stops
+   disagreeing with the tags.
+
+**The tag is the source of truth for the version.** Tagging `1.0.0` while
+`package.json` says `0.2.0` is fine: the pipeline releases `1.0.0` and pushes a
+`Move to 1.0.0` commit to `master`. The one thing it will not do is move the
+version *backwards*: if the tag is older than what is on the branch, the branch
+is left alone, because that is almost always a mistyped tag rather than an
+intentional rewind.
+
+A `concurrency` group stops two releases publishing `gh-pages` at once. The
+version sync runs after publishing, so a failure there cannot stop a release that
+has already gone out.
+
+> A workflow triggered by a tag runs the workflow file **as it exists on that
+> tag**. If you change `release.yml`, an existing tag will still run the old
+> version of it, so the tag has to be recreated on a commit that contains the
+> change.
+
+### What the script does
+
+`scripts/release.js` refuses to start unless the working tree is clean and the
+branch is not behind the remote, optionally bumps the version and commits it,
+lints, tests and builds, tags the release, publishes `dist/` to `gh-pages`, and
+pushes branch, tag and `gh-pages` in one atomic push.
+
+It publishes as well as the workflow, which is deliberate and safe: publishing is
+idempotent, so whichever runs second sees the branch already holds that exact tree
+and adds no commit. Pass `--skip-pages` to leave publishing entirely to the
+workflow.
+
+Both paths build the `gh-pages` commit through `scripts/lib/pages.js`, so
+publishing from a workstation and publishing from a runner cannot drift apart.
 
 Worth knowing about how it publishes:
 
