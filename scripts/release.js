@@ -41,8 +41,11 @@ const packageJsonPath = path.join(repoRoot, 'package.json')
 // cache: `npm version` rewrites this file part-way through the run.
 const readPackage = () => JSON.parse(readFileSync(packageJsonPath, 'utf8'))
 
-// npm is a .cmd shim on Windows, which execFile cannot launch without it.
-const NPM = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+// On Windows npm is a .cmd shim, and since the fix for CVE-2024-27980 Node
+// refuses to spawn .cmd or .bat without a shell, failing with EINVAL. Hence
+// shell: true there. Do not remove it: the script cannot run npm on Windows
+// without it.
+const NEEDS_SHELL = process.platform === 'win32'
 
 const BUMPS = new Set(['patch', 'minor', 'major'])
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
@@ -82,7 +85,21 @@ function git (args, { input, env, allowFailure = false } = {}) {
 }
 
 function npm (args) {
-  execFileSync(NPM, args, { cwd: repoRoot, stdio: 'inherit' })
+  // Going through a shell means arguments are re-parsed by it, so refuse
+  // anything that could be read as shell syntax. Every argument here is either a
+  // literal or a version already matched against SEMVER, so this only guards
+  // against a future edit introducing something unsafe.
+  for (const arg of args) {
+    if (!/^[A-Za-z0-9._@/-]+$/.test(arg)) {
+      fail(`refusing to pass "${arg}" to npm: unexpected characters`)
+    }
+  }
+
+  try {
+    execFileSync('npm', args, { cwd: repoRoot, stdio: 'inherit', shell: NEEDS_SHELL })
+  } catch (error) {
+    fail(`npm ${args.join(' ')} failed`, { cause: error })
+  }
 }
 
 // ------------------------------------------------------------------- options ---
