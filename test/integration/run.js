@@ -20,6 +20,21 @@ import { Checks, inPage, startServer, write } from './harness.js'
 const here = path.dirname(fileURLToPath(import.meta.url))
 const dist = path.resolve(here, '..', '..', 'dist')
 
+// Chromium's sandbox needs unprivileged user namespaces. Ubuntu 23.10 and later,
+// which includes the ubuntu-latest CI runner, block those by default through
+// AppArmor, and Electron then aborts during start-up rather than run unsandboxed.
+// Set unconditionally instead of only under CI, so a local run exercises the same
+// configuration as the pipeline.
+//
+// This is a test harness loading its own build from localhost, so giving up the
+// sandbox here costs nothing. Nothing in the application does this.
+app.commandLine.appendSwitch('no-sandbox')
+app.commandLine.appendSwitch('disable-setuid-sandbox')
+// Software rendering: CI runners have no GPU, and /dev/shm is small on some of
+// them, which crashes the renderer.
+app.commandLine.appendSwitch('disable-gpu')
+app.commandLine.appendSwitch('disable-dev-shm-usage')
+
 const checks = new Checks()
 
 /**
@@ -59,7 +74,11 @@ function openWindow (width, height) {
     show: false,
     width,
     height,
-    webPreferences: { contextIsolation: true, sandbox: false, offscreen: true }
+    // `show: false` is enough: a hidden window still loads and lays out, which is
+    // all the geometry assertions need. Offscreen rendering was tried here first,
+    // but it is a separate compositing path with a history of misbehaving on
+    // Linux, and nothing here ever captures a frame.
+    webPreferences: { contextIsolation: true, sandbox: false }
   })
 }
 

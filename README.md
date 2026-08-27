@@ -99,8 +99,15 @@ checks 74 things, including the two halves of issue #2 (no overlapping panels at
 390x780, and an upload button of a usable size), and exits non-zero on failure.
 
 `.github/workflows/ci.yml` runs `npm run check` on every push and pull request,
-and the integration check as a second job. On a Linux runner that one needs
-`xvfb-run`, because Electron wants an X display even for an offscreen window.
+and the integration check as a second job. Two things that job needs on a Linux
+runner, both of which have already caught us out once:
+
+- `xvfb-run`, because Electron wants an X display even for a hidden window.
+- `--no-sandbox`. Chromium's sandbox needs unprivileged user namespaces, and
+  Ubuntu 23.10 and later block those by default through AppArmor, so Electron
+  aborts during start-up instead of running unsandboxed. The switch is set in
+  `test/integration/run.js` rather than in the workflow, so a local run uses the
+  same configuration as CI.
 
 ## Releasing
 
