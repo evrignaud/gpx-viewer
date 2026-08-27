@@ -10,6 +10,7 @@
  * Launched by Electron, not by Vitest: run `npm run test:integration`.
  */
 import { app, BrowserWindow, session } from 'electron'
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -433,6 +434,14 @@ async function checkRemoteGpx (port) {
 }
 
 app.whenReady().then(async () => {
+  // This checks the built output, so say so plainly rather than reporting a pile
+  // of 404s if someone runs the script without building first.
+  if (!existsSync(path.join(dist, 'index.html'))) {
+    write(`No build found at ${dist}. Run "npm run build" first, or use "npm run test:integration".`)
+    app.exit(1)
+    return
+  }
+
   const { server, port } = await startServer({
     dist,
     routes: {
