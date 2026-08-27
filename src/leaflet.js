@@ -8,8 +8,17 @@ import 'leaflet.locatecontrol/dist/L.Control.Locate.css'
 
 import 'leaflet-providers'
 import 'leaflet-gpx'
-import 'leaflet.fullscreen'
-import 'leaflet.locatecontrol'
+
+// Unlike the two plugins above, the ESM builds of these export their classes
+// and factories but do not register them on the L namespace, so `L.control.
+// fullscreen` and `L.control.locate` do not exist. Attaching them here keeps
+// every plugin reachable the same way from the rest of the code.
+import { FullScreen } from 'leaflet.fullscreen'
+import { locate } from 'leaflet.locatecontrol'
+
+L.Control.FullScreen = FullScreen
+L.control.fullscreen = (options) => new FullScreen(options)
+L.control.locate = locate
 
 import markerIconUrl from '../images/marker-icon.png'
 import markerIconRetinaUrl from '../images/marker-icon-2x.png'

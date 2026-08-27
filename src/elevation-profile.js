@@ -78,10 +78,13 @@ const ElevationProfile = L.Control.extend({
   },
 
   initialize (options) {
-    L.setOptions(this, options)
+    const { units, ...rest } = options || {}
+    L.setOptions(this, rest)
+    this._units = units
     this._tracks = new Map()
     this._nextId = 0
     this._hoverMarker = null
+    this._units?.onChange(() => this._render())
   },
 
   onAdd (map) {
@@ -164,6 +167,28 @@ const ElevationProfile = L.Control.extend({
     return [...this._tracks.values()].filter((track) => !track.hidden)
   },
 
+  // Unit conversion, with a metric fallback so the control still works when it
+  // is constructed without a Units instance.
+  _toDistance (metres) {
+    return this._units ? this._units.distance(metres) : metres / 1000
+  },
+
+  _fromDistance (value) {
+    return this._units ? value / this._units.distance(1) : value * 1000
+  },
+
+  _toElevation (metres) {
+    return this._units ? this._units.elevation(metres) : metres
+  },
+
+  _distanceLabel () {
+    return this._units ? this._units.distanceLabel : 'km'
+  },
+
+  _elevationLabel () {
+    return this._units ? this._units.elevationLabel : 'm'
+  },
+
   _measure () {
     const options = this.options
     const mapSize = this._map.getSize()
@@ -221,8 +246,16 @@ const ElevationProfile = L.Control.extend({
       maxElevation += 1
     }
 
-    const x = scaleLinear().domain([0, maxDistance / 1000]).range([0, innerWidth]).nice()
-    const y = scaleLinear().domain([minElevation, maxElevation]).range([innerHeight, 0]).nice()
+    // Samples are stored in metres; the axes are drawn in whichever units are
+    // currently selected.
+    const x = scaleLinear()
+      .domain([0, this._toDistance(maxDistance)])
+      .range([0, innerWidth])
+      .nice()
+    const y = scaleLinear()
+      .domain([this._toElevation(minElevation), this._toElevation(maxElevation)])
+      .range([innerHeight, 0])
+      .nice()
     this._x = x
     this._y = y
     this._innerWidth = innerWidth
@@ -244,13 +277,13 @@ const ElevationProfile = L.Control.extend({
       .call(axisLeft(y).ticks(yTicks).tickSize(-innerWidth).tickFormat(() => ''))
 
     const areaShape = area()
-      .x((point) => x(point.dist / 1000))
+      .x((point) => x(this._toDistance(point.dist)))
       .y0(innerHeight)
-      .y1((point) => y(point.ele))
+      .y1((point) => y(this._toElevation(point.ele)))
 
     const lineShape = line()
-      .x((point) => x(point.dist / 1000))
-      .y((point) => y(point.ele))
+      .x((point) => x(this._toDistance(point.dist)))
+      .y((point) => y(this._toElevation(point.ele)))
 
     // A single track reads better as a filled area; several overlaid tracks
     // read better as lines, because stacked fills hide each other.
@@ -287,14 +320,14 @@ const ElevationProfile = L.Control.extend({
       .attr('x', innerWidth)
       .attr('y', innerHeight + margin.bottom - 4)
       .attr('text-anchor', 'end')
-      .text('km')
+      .text(this._distanceLabel())
 
     plot.append('text')
       .attr('class', 'elevation-axis-label')
       .attr('x', 0)
       .attr('y', -2)
       .attr('text-anchor', 'start')
-      .text('m')
+      .text(this._elevationLabel())
 
     this._cursor = plot.append('line')
       .attr('class', 'elevation-cursor')
@@ -324,8 +357,8 @@ const ElevationProfile = L.Control.extend({
     }
 
     const [pointerX] = pointer(event)
-    const distanceKm = this._x.invert(pointerX)
-    const targetMetres = distanceKm * 1000
+    // The axis is in display units; samples are indexed in metres.
+    const targetMetres = this._fromDistance(this._x.invert(pointerX))
 
     // Pick the sample closest to the cursor, across every visible track.
     let best = null
@@ -348,15 +381,16 @@ const ElevationProfile = L.Control.extend({
     }
 
     const { point } = best
-    const px = this._x(point.dist / 1000)
-    const py = this._y(point.ele)
+    const px = this._x(this._toDistance(point.dist))
+    const py = this._y(this._toElevation(point.ele))
 
     this._cursor.attr('x1', px).attr('x2', px).style('display', null)
     this._focus.attr('cx', px).attr('cy', py).attr('fill', bestTrack.color).style('display', null)
 
     const label = bestTrack.name ? `${bestTrack.name}: ` : ''
-    this._tooltip.textContent =
-      `${label}${formatNumber(point.dist / 1000, 2)} km, ${formatNumber(point.ele, 0)} m`
+    this._tooltip.textContent = label +
+      `${formatNumber(this._toDistance(point.dist), 2)} ${this._distanceLabel()}, ` +
+      `${formatNumber(this._toElevation(point.ele), 0)} ${this._elevationLabel()}`
     this._tooltip.hidden = false
 
     this._showHoverMarker(point.latlng, bestTrack.color)

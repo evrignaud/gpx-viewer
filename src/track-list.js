@@ -22,12 +22,15 @@ const ICON_REMOVE =
  * reloading the page.
  */
 export class TrackList {
-  constructor ({ element, store }) {
+  constructor ({ element, store, units }) {
     this.element = element
     this.store = store
+    this.units = units
     this.list = element.querySelector('#track-list')
     this.countLabel = element.querySelector('#track-count')
     this.items = new Map()
+
+    this.units.onChange(() => this.update())
 
     this.collapsible = new Collapsible({
       element,
@@ -124,7 +127,8 @@ export class TrackList {
     // textContent, not innerHTML: the name comes out of a user-supplied file.
     parts.name.textContent = track.name
     parts.name.title = track.name
-    parts.distance.textContent = `${formatNumber(track.stats.distanceKm, 2)} km`
+    parts.distance.textContent =
+      `${formatNumber(this.units.distance(track.stats.distance), 2)} ${this.units.distanceLabel}`
     parts.zoom.setAttribute('aria-label', `Zoom to ${track.name}`)
     parts.zoom.title = `Zoom to ${track.name}`
     parts.remove.setAttribute('aria-label', `Remove ${track.name}`)

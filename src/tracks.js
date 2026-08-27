@@ -179,15 +179,15 @@ export class TrackStore {
     }
   }
 
+  /**
+   * Statistics are kept in SI units, metres and milliseconds, and converted for
+   * display. That way switching between metric and imperial does not require
+   * re-parsing the files.
+   */
   readStats (gpx) {
-    const distanceKm = gpx.m_to_km(gpx.get_distance())
-    const movingTime = gpx.get_moving_time()
     return {
-      distanceKm,
-      movingTime,
-      // Recomputed rather than read from get_moving_pace() so a zero-distance
-      // track yields Infinity here and is rendered as "-" instead of "NaN".
-      pace: distanceKm > 0 ? movingTime / distanceKm : Infinity,
+      distance: gpx.get_distance(),
+      movingTime: gpx.get_moving_time(),
       elevationGain: gpx.get_elevation_gain(),
       elevationLoss: gpx.get_elevation_loss(),
       startTime: gpx.get_start_time() || null
@@ -208,12 +208,12 @@ export class TrackStore {
 
   /**
    * Totals across the visible tracks only, so hiding a track also removes it
-   * from the summary.
+   * from the summary. In SI units, like the per-track statistics.
    */
   get totals () {
     const totals = {
       count: 0,
-      distanceKm: 0,
+      distance: 0,
       movingTime: 0,
       elevationGain: 0,
       elevationLoss: 0
@@ -221,13 +221,12 @@ export class TrackStore {
 
     for (const track of this.visibleTracks) {
       totals.count += 1
-      totals.distanceKm += track.stats.distanceKm
+      totals.distance += track.stats.distance
       totals.movingTime += track.stats.movingTime
       totals.elevationGain += track.stats.elevationGain
       totals.elevationLoss += track.stats.elevationLoss
     }
 
-    totals.pace = totals.distanceKm > 0 ? totals.movingTime / totals.distanceKm : Infinity
     return totals
   }
 
