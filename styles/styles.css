@@ -1,113 +1,271 @@
+:root {
+  --panel-bg: rgba(255, 255, 255, 0.9);
+  --panel-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  --panel-radius: 5px;
+  --accent: #017a00;
+  --error: #b00020;
+  --font-stack: 'Lato', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+html,
+body {
+  height: 100%;
+}
 
 body {
-  font-family: 'Lato', sans-serif;
-  font-size: 1.6em;
+  font-family: var(--font-stack);
+  font-size: 100%;
   background-color: #eeeeee;
+  overflow: hidden;
 }
+
+#app {
+  height: 100%;
+}
+
+.map {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------------------------------------------------------------- splash --- */
 
 .splash {
   text-align: center;
   position: fixed;
-  top: 50%;
-  width: 100%;
-  height: 16em;
-  margin-top: -8em; /* set to a negative number 1/2 of your height */
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  background-color: #eeeeee;
+  z-index: 2000;
+}
+
+.splash[hidden] {
+  display: none;
 }
 
 .splash .message {
-  font-size: 3em;
+  font-size: 2.5rem;
+  margin: 0;
   text-shadow: rgba(0, 0, 0, 0.5) 0 0 15px;
-  width: 100%;
 }
 
-.splash .fa-spinner {
-  text-align: center;
-  display: inline-block;
-  font-size: 5em;
-  margin-top: 50px;
+/* Pure CSS replacement for the Font Awesome spinner the markup used to ask for.
+   Font Awesome was never loaded, so that icon never rendered at all. */
+.spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 0.35rem solid rgba(0, 0, 0, 0.15);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
 }
 
-.unsupported-browser {
-  text-align: center;
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 3s;
+  }
+}
+
+.startup-error-title {
+  color: var(--error);
+}
+
+.startup-error-message {
+  font-size: 1.1rem;
+  max-width: 34rem;
+  padding: 0 1rem;
+}
+
+.noscript-warning {
   position: fixed;
-  top: 40%;
-  margin-top: -5em; /* set to a negative number 1/2 of your height */
-  padding-left: 20px;
-  padding-right: 20px;
-  width: 100%;
-  height: 10em;
+  inset: 0;
+  z-index: 3000;
+  margin: 0;
+  padding: 2rem;
+  background: #eeeeee;
+  font-size: 1.25rem;
 }
 
-.unsupported-browser-error-title {
-  font-size: 2em;
-  width: 100%;
-  text-shadow: rgba(0, 0, 0, 0.5) 0 0 15px;
-  color: red;
-  margin-bottom: 20px;
+/* ------------------------------------------------------------ info panel --- */
+
+.panel {
+  font-family: var(--font-stack);
+  background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
+  border-radius: var(--panel-radius);
+  padding: 6px 10px;
 }
 
-.unsupported-browser-error-message {
-  font-size: 1.5em;
-  width: 100%;
-  margin-bottom: 40px;
-}
-
-.input-group-addon-no-border {
-  background-color: inherit;
-  border: inherit;
-}
-
-.inverted-text, .inverted-text:hover {
-  color: white;
-}
-
-:checked + span {
-  font-weight: bold;
-}
-
-.fully-centered {
-  position: absolute;
-  width: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.map {
-  width: 100vw;
-  height: 100vh;
-}
-
-.leaflet-control-graphicscale {
-  color: #017a00;
-}
-
-.leaflet-control-graphicscale .label {
-  color: #017a00;
-}
-
-.lime-theme.leaflet-control.elevation .background {
-  background-color: rgba(255, 255, 255, 0.6);
+.panel[hidden] {
+  display: none;
 }
 
 #info-panel {
-  font-family: 'Lato', sans-serif;
-  font-size: 1.2em;
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-  position: fixed;
-  left: 0px;
-  margin-left: 10px;
-  padding: 6px 8px;
-  border-radius: 5px;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  max-width: min(30rem, calc(100vw - 5rem));
 }
 
 .info-name {
-  margin-top: 5px;
+  margin: 4px 0;
+  font-size: 1rem;
+  overflow-wrap: anywhere;
 }
 
 .info-separator {
-  margin-top: 5px;
-  margin-bottom: 5px;
+  margin: 5px 0;
   border: 0;
-  border-top: 1px solid #333;
+  border-top: 1px solid #333333;
+}
+
+/* ------------------------------------------------------ elevation profile --- */
+
+.elevation-profile {
+  position: relative;
+  background: var(--panel-bg);
+  box-shadow: var(--panel-shadow);
+  border-radius: var(--panel-radius);
+  padding: 4px 6px 0;
+}
+
+.elevation-profile[hidden] {
+  display: none;
+}
+
+.elevation-profile svg {
+  display: block;
+}
+
+.elevation-axis text {
+  font-family: var(--font-stack);
+  font-size: 10px;
+  fill: #333333;
+}
+
+.elevation-axis-label {
+  font-family: var(--font-stack);
+  font-size: 10px;
+  fill: #666666;
+}
+
+.elevation-axis path,
+.elevation-axis line {
+  stroke: #999999;
+}
+
+.elevation-grid line {
+  stroke: rgba(0, 0, 0, 0.12);
+}
+
+.elevation-grid path {
+  stroke: none;
+}
+
+.elevation-cursor {
+  stroke: #333333;
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.elevation-focus {
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+.elevation-tooltip {
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 3px;
+  padding: 1px 5px;
+  pointer-events: none;
+}
+
+.elevation-tooltip[hidden] {
+  display: none;
+}
+
+/* --------------------------------------------------------------- notices --- */
+
+#notices {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1500;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(32rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.notice {
+  position: relative;
+  pointer-events: auto;
+  font-size: 0.85rem;
+  padding: 8px 30px 8px 12px;
+  border-radius: var(--panel-radius);
+  box-shadow: var(--panel-shadow);
+  background: #ffffff;
+  border-left: 4px solid var(--accent);
+}
+
+.notice-error {
+  border-left-color: var(--error);
+  color: var(--error);
+}
+
+.notice-dismiss {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  border: 0;
+  background: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+  padding: 4px 6px;
+}
+
+/* ------------------------------------------------------------ drag & drop --- */
+
+.drop-active::after {
+  content: 'Drop GPX files to load them';
+  position: absolute;
+  inset: 8px;
+  z-index: 1600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--accent);
+  background: rgba(255, 255, 255, 0.65);
+  border: 3px dashed var(--accent);
+  border-radius: 8px;
+  pointer-events: none;
+}
+
+/* ------------------------------------------------------------ leaflet bits --- */
+
+.leaflet-control-scale-line {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.leaflet-container {
+  font-family: var(--font-stack);
 }

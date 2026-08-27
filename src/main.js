@@ -1,28 +1,51 @@
+import 'normalize.css'
 import '../styles/styles.css'
 
-import {LogManager} from 'aurelia-framework'
-import {debug} from './config'
+import { appVersion, logger } from './config.js'
+import { domControl } from './dom-control.js'
+import { installDropTarget } from './drop-target.js'
+import { elevationProfile } from './elevation-profile.js'
+import { InfoPanel } from './info-panel.js'
+import { createMap } from './map.js'
+import { Notices } from './notice.js'
+import { TrackStore } from './tracks.js'
 
-if (debug) {
-  LogManager.setLevel(LogManager.logLevel.debug)
+function start () {
+  logger.info(`GPX Viewer ${appVersion}`)
+
+  const app = document.getElementById('app')
+  const notices = new Notices(app)
+
+  const { map } = createMap('map')
+
+  const elevation = elevationProfile()
+  elevation.addTo(map)
+
+  const infoPanel = new InfoPanel(document.getElementById('info-panel'))
+  domControl(infoPanel.element, 'topleft').addTo(map)
+
+  const store = new TrackStore({
+    map,
+    elevation,
+    onChange: () => infoPanel.update(store),
+    onError: (message) => notices.error(message)
+  })
+
+  installDropTarget({
+    element: app,
+    map,
+    onFiles: (files) => store.loadFiles(files)
+  })
+
+  // Hiding the splash is what the inline check in index.html looks for to decide
+  // whether the bundle booted.
+  document.getElementById('splash').hidden = true
+
+  return { map, store, elevation, notices }
 }
 
-// Configure Bluebird Promises.
-// Note: You may want to use environment-specific configuration.
-Promise.config({
-  warnings: {
-    wForgottenReturn: false
-  }
-})
-
-export function configure (aurelia) {
-  aurelia.use.standardConfiguration()
-
-  if (debug) {
-    aurelia.use.developmentLogging()
-  }
-
-  aurelia.start().then(() => {
-    aurelia.setRoot('app')
-  })
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', start, { once: true })
+} else {
+  start()
 }
