@@ -241,6 +241,122 @@ body {
   outline-offset: 2px;
 }
 
+.button-small {
+  min-height: 2rem;
+  min-width: 0;
+  padding: 0 8px;
+  font-size: 0.8rem;
+}
+
+/* ---------------------------------------------------------- track list --- */
+
+#track-panel {
+  font-size: 0.85rem;
+  max-width: min(24rem, calc(100vw - 5rem));
+}
+
+.track-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(18rem, calc(100dvh - 22rem));
+  overflow-y: auto;
+}
+
+.track-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.track-item.is-hidden-track .track-label {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.track-visible {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.track-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 1.75rem;
+  cursor: pointer;
+}
+
+.track-swatch {
+  flex: 0 0 auto;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+.track-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-distance {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+  color: #555555;
+}
+
+.track-action {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: #444444;
+  cursor: pointer;
+}
+
+.track-action svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  fill: currentcolor;
+}
+
+.track-action:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.track-action-remove:hover {
+  color: var(--error);
+}
+
+.track-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.track-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(0, 0, 0, 0.2);
+}
+
 /* ------------------------------------------------------ elevation profile --- */
 
 .elevation-profile {
@@ -397,6 +513,26 @@ body {
     font-size: 0.8rem;
     max-width: calc(100vw - 4.5rem);
     max-height: calc(100dvh - 16rem);
+  }
+
+  #track-panel {
+    font-size: 0.8rem;
+    max-width: calc(100vw - 4.5rem);
+  }
+
+  .track-list {
+    max-height: min(12rem, calc(100dvh - 24rem));
+  }
+
+  /* Comfortable tap targets for the per-track actions. */
+  .track-action {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .track-visible {
+    width: 1.15rem;
+    height: 1.15rem;
   }
 
   .toolbar {

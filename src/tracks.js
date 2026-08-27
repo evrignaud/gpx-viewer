@@ -231,6 +231,12 @@ export class TrackStore {
     return totals
   }
 
+  setAllVisible (visible) {
+    for (const track of this.tracks) {
+      this.setVisible(track.id, visible)
+    }
+  }
+
   setVisible (id, visible) {
     const track = this.tracks.find((entry) => entry.id === id)
     if (!track || track.visible === visible) {

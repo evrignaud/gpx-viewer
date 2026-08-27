@@ -78,6 +78,22 @@
         </div>
       </div>
 
+      <div id="track-panel" class="panel" hidden>
+        <button type="button" id="track-toggle" class="panel-toggle"
+                aria-expanded="false" aria-controls="track-body">
+          <span id="track-count">Tracks</span>
+          <span class="panel-chevron" aria-hidden="true"></span>
+        </button>
+
+        <div id="track-body" class="panel-body" hidden>
+          <ul id="track-list" class="track-list"></ul>
+          <div class="track-actions">
+            <button type="button" id="tracks-show-all" class="button button-small">Show all</button>
+            <button type="button" id="tracks-remove-all" class="button button-small">Remove all</button>
+          </div>
+        </div>
+      </div>
+
       <div id="splash" class="splash">
         <p class="message">Loading</p>
         <div class="spinner" role="progressbar" aria-label="Loading GPX Viewer"></div>

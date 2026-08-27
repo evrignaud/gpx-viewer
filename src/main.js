@@ -9,6 +9,7 @@ import { installFilePicker } from './file-picker.js'
 import { InfoPanel } from './info-panel.js'
 import { createMap } from './map.js'
 import { Notices } from './notice.js'
+import { TrackList } from './track-list.js'
 import { TrackStore } from './tracks.js'
 
 function start () {
@@ -28,12 +29,24 @@ function start () {
   const infoPanel = new InfoPanel(document.getElementById('info-panel'))
   domControl(infoPanel.element, 'topleft').addTo(map)
 
+  const trackPanel = document.getElementById('track-panel')
+  domControl(trackPanel, 'topleft').addTo(map)
+
+  // `trackList` is referenced by the store's onChange callback below, so it has
+  // to be declared before the store is constructed.
+  let trackList = null
+
   const store = new TrackStore({
     map,
     elevation,
-    onChange: () => infoPanel.update(store),
+    onChange: () => {
+      infoPanel.update(store)
+      trackList?.update()
+    },
     onError: (message) => notices.error(message)
   })
+
+  trackList = new TrackList({ element: trackPanel, store })
 
   const loadFiles = (files) => store.loadFiles(files)
 
