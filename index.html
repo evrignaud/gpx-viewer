@@ -106,8 +106,13 @@
       <p class="noscript-warning">GPX Viewer needs JavaScript to render maps and elevation profiles.</p>
     </noscript>
 
-    <!-- Classic script, so it runs ahead of the deferred module bundle. -->
-    <script src="./boot-diagnostics.js"></script>
+    <!--
+      Classic script, so it runs ahead of the deferred module bundle. Referenced
+      as a public asset with a leading slash: Vite rewrites that against `base`
+      at build time, whereas a relative path makes it try to bundle the file and
+      warn that it cannot without type="module".
+    -->
+    <script src="/boot-diagnostics.js"></script>
 
     <script type="module" src="/src/main.js"></script>
   </body>

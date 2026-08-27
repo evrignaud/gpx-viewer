@@ -1,5 +1,7 @@
 # gpx-viewer
 
+[![CI](https://github.com/evrignaud/gpx-viewer/actions/workflows/ci.yml/badge.svg)](https://github.com/evrignaud/gpx-viewer/actions/workflows/ci.yml)
+
 Load several GPX tracks at once, compare them, and read their elevation profile on
 switchable map layers.
 
@@ -95,6 +97,10 @@ overlapping on a phone, unit conversion reaching the DOM. jsdom cannot see any o
 it, because it has no layout engine and Leaflet needs one. The integration run
 checks 74 things, including the two halves of issue #2 (no overlapping panels at
 390x780, and an upload button of a usable size), and exits non-zero on failure.
+
+`.github/workflows/ci.yml` runs `npm run check` on every push and pull request,
+and the integration check as a second job. On a Linux runner that one needs
+`xvfb-run`, because Electron wants an X display even for an offscreen window.
 
 ### Desktop app
 
