@@ -1,116 +1,124 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=3"><meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"><title>GPX Viewer</title><script>window.appVersion = "0.1.1"</script><link href="http://fonts.googleapis.com/css?family=Lato:400,700" rel="stylesheet" type="text/css"><script src="libs/leaflet.js"></script><script src="libs/leaflet-gpx.js"></script><script src="libs/Leaflet.GraphicScale.js"></script><script src="libs/d3.js"></script><script src="libs/leaflet.elevation.js"></script><script src="libs/leaflet-providers.js"></script><script src="libs/L.Control.Layers.Minimap.js"></script><link href="libs/leaflet.css" rel="stylesheet" type="text/css"><link href="libs/Leaflet.GraphicScale.min.css" rel="stylesheet" type="text/css"><link href="libs/leaflet.elevation.css" rel="stylesheet" type="text/css"><link href="libs/normalize.css" rel="stylesheet" type="text/css"><link href="libs/control.layers.minimap.css" rel="stylesheet" type="text/css"><link href="styles.css" rel="stylesheet"></head><body><div id="main" aurelia-app="main"><div id="splash" class="splash"><div class="message">Loading</div><i class="fa fa-spinner fa-pulse"></i></div></div><script>(function bootstrapApp () {
-        function getParameterByName (name, url) {
-          if (!url) {
-            url = window.location.href
-          }
-          name = name.replace(/[\[\]]/g, '\\$&')
-          var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)')
-          var results = regex.exec(url)
-          if (!results) {
-            return null
-          }
-          if (!results[2]) {
-            return ''
-          }
-          return decodeURIComponent(results[2].replace(/\+/g, ' '))
-        }
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <!-- No maximum-scale: pinch zoom must stay available (WCAG 1.4.4). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description"
+          content="Load several GPX tracks at once, compare them and read their elevation profile on switchable map layers.">
+    <title>GPX Viewer</title>
 
-        var debug = Boolean(getParameterByName('debug'))
-        var visualLog = Boolean(getParameterByName('visual-log'))
-        var hideVisualLogOnSuccess = Boolean(getParameterByName('hide-visual-log-on-success'))
-        var statusCheckTimeout = getParameterByName('status-check-timeout') || 50 * 1000
+    <!--
+      Map tiles come from many different hosts, so img-src has to allow https:
+      broadly, and connect-src likewise for ?gpx= links. Everything else is
+      locked to this origin. `ws:` covers the Vite dev server's hot-reload
+      socket, and style-src allows inline styles because the dev server injects
+      CSS as <style> elements.
+    -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self';
+                   img-src 'self' data: blob: https:;
+                   style-src 'self' 'unsafe-inline';
+                   font-src 'self';
+                   script-src 'self';
+                   connect-src 'self' ws: wss: https:;
+                   object-src 'none';
+                   base-uri 'none';
+                   form-action 'none'">
 
-        function displayInConsole (logger, args) {
-          if (logger.apply) { // For normal browsers
-            logger.apply(console, args)
-          } else { // For IE
-            var message = Array.prototype.slice.apply(args).join(' ')
-            logger(message)
-          }
-        }
+    <link rel="icon" href="./favicon.ico" sizes="any">
 
-        function logDebug () {
-          if (debug) {
-            displayInConsole(console.log, arguments)
-          }
-        }
+    <!-- Lato is bundled from @fontsource/lato, imported by src/main.js, so no
+         font is fetched from a third party. -->
+    <script type="module" crossorigin src="./assets/index-C1M9Od8b.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DWJWh92X.css">
+  </head>
 
-        window.appLogDebug = logDebug
+  <body>
+    <div id="app">
+      <div id="map" class="map"></div>
 
-        if (visualLog) {
-          var mainElem = document.getElementById('main')
-          var loggerElem = document.createElement('pre')
-          loggerElem.id = 'visual-log'
-          document.body.insertBefore(loggerElem, mainElem)
+      <!-- Touch devices have no drag and drop, so a real file picker is the
+           only way in for them. Reported as GitHub issue #2. -->
+      <div id="toolbar" class="panel toolbar">
+        <span class="file-picker">
+          <input id="file-input" type="file" accept=".gpx,application/gpx+xml" multiple>
+          <label class="button" for="file-input">
+            <span aria-hidden="true">&#43;</span> Add GPX
+          </label>
+        </span>
 
-          function displayInLoggerElem (args) {
-            for (var i = 0; i < args.length; i++) {
-              if (typeof args[i] == 'object') {
-                loggerElem.innerHTML += (JSON && JSON.stringify ? JSON.stringify(args[i]) : args[i]) + ' '
-              } else {
-                loggerElem.innerHTML += args[i] + ' '
-              }
-            }
-            loggerElem.innerHTML += '<br />'
-          }
+        <button type="button" id="unit-toggle" class="button"
+                aria-live="polite" title="Switch between metric and imperial units">
+          <span id="unit-label">km</span>
+        </button>
 
-          function intercept (method) {
-            var original = console[method]
-            console[method] = function () {
-              displayInLoggerElem(arguments)
-              if (original) {
-                displayInConsole(original, arguments)
-              }
-            }
-          }
+        <button type="button" id="elevation-toggle" class="button" aria-pressed="true">
+          <span aria-hidden="true" class="elevation-icon"></span> Elevation
+        </button>
+      </div>
 
-          function takeOverConsole () {
-            // From http://tobyho.com/2012/07/27/taking-over-console-log/
-            var console = window.console
-            if (!console) {
-              return
-            }
+      <div id="info-panel" class="panel" hidden>
+        <button type="button" id="info-toggle" class="panel-toggle"
+                aria-expanded="true" aria-controls="info-body">
+          <span class="info-name"></span>
+          <span class="panel-chevron" aria-hidden="true"></span>
+        </button>
 
-            var methods = ['log', 'info', 'warn', 'error', 'exception']
-            if (debug) {
-              methods.push('debug')
-              methods.push('trace')
-            }
-            for (var i = 0; i < methods.length; i++) {
-              intercept(methods[i])
-            }
-          }
+        <div id="info-body" class="panel-body">
+          <span class="info-start"></span>
+          <br/>
+          Distance:&nbsp;<span class="info-distance"></span>&nbsp;<span class="unit-distance"></span>
+          &mdash; Duration:&nbsp;<span class="info-duration"></span>
+          &mdash; Pace:&nbsp;<span class="info-pace"></span>/<span class="unit-distance"></span>
+          <br/>
+          Elevation:&nbsp;+<span class="info-elevation-gain"></span>&nbsp;<span class="unit-elevation"></span>,
+          -<span class="info-elevation-loss"></span>&nbsp;<span class="unit-elevation"></span>
+          (net:&nbsp;<span class="info-elevation-net"></span>&nbsp;<span class="unit-elevation"></span>)
+          <hr class="info-separator"/>
+          Total distance:&nbsp;<span class="info-total-distance"></span>&nbsp;<span class="unit-distance"></span>
+          &mdash; Total duration:&nbsp;<span class="info-total-duration"></span>
+          &mdash; Total pace:&nbsp;<span class="info-total-pace"></span>/<span class="unit-distance"></span>
+          <br/>
+          Total elevation:&nbsp;+<span class="info-total-elevation-gain"></span>&nbsp;<span class="unit-elevation"></span>,
+          -<span class="info-total-elevation-loss"></span>&nbsp;<span class="unit-elevation"></span>
+          (net:&nbsp;<span class="info-total-elevation-net"></span>&nbsp;<span class="unit-elevation"></span>)
+        </div>
+      </div>
 
-          takeOverConsole(loggerElem)
-        }
+      <div id="track-panel" class="panel" hidden>
+        <button type="button" id="track-toggle" class="panel-toggle"
+                aria-expanded="false" aria-controls="track-body">
+          <span id="track-count">Tracks</span>
+          <span class="panel-chevron" aria-hidden="true"></span>
+        </button>
 
-        var appStatusChecked = false
-        function checkAppStartedCorrectly() {
-          if (!appStatusChecked) {
-            appStatusChecked = true
-            var splash = document.getElementById('splash')
-            if (splash) {
-              console.error('ERROR: App failed to start')
+        <div id="track-body" class="panel-body" hidden>
+          <ul id="track-list" class="track-list"></ul>
+          <div class="track-actions">
+            <button type="button" id="tracks-show-all" class="button button-small">Show all</button>
+            <button type="button" id="tracks-remove-all" class="button button-small">Remove all</button>
+          </div>
+        </div>
+      </div>
 
-              // The spinner is still here. App have not started successfully
-              while (splash.firstChild) {
-                splash.removeChild(splash.firstChild)
-              }
-              splash.removeAttribute('class')
-              splash.setAttribute('class', 'unsupported-browser')
+      <div id="splash" class="splash">
+        <p class="message">Loading</p>
+        <div class="spinner" role="progressbar" aria-label="Loading GPX Viewer"></div>
+      </div>
+    </div>
 
-              var htmlMessage = '<div class="message unsupported-browser-error-title">Application failed to start</div>'
-              htmlMessage += '<p class="unsupported-browser-error-message">Perhaps you need to update your browser.<br />'
-              htmlMessage += '<a href="http://browsehappy.com/">Browse Happy</a> can help you.'
-              splash.insertAdjacentHTML('beforeend', htmlMessage)
-            } else {
-              logDebug('App is started successfully')
-              if (visualLog && hideVisualLogOnSuccess) {
-                document.getElementById('visual-log').remove()
-              }
-            }
-          }
-        }
+    <noscript>
+      <p class="noscript-warning">GPX Viewer needs JavaScript to render maps and elevation profiles.</p>
+    </noscript>
 
-        setTimeout(checkAppStartedCorrectly, statusCheckTimeout)
-      })()</script><script src="https://cdn.polyfill.io/v2/polyfill.min.js?features=requestAnimationFrame,Element.prototype.classList,URL"></script><script type="text/javascript" src="bootstrap.d0d6e1361e8f59ece0d3.bundle.js"></script><script type="text/javascript" src="vendor.cf9f7a7d3bfa74e6c05d.bundle.js"></script><script type="text/javascript" src="app.ec5efd1fc4139ac38e2f.bundle.js"></script></body></html>
+    <!--
+      Classic script, so it runs ahead of the deferred module bundle. Referenced
+      as a public asset with a leading slash: Vite rewrites that against `base`
+      at build time, whereas a relative path makes it try to bundle the file and
+      warn that it cannot without type="module".
+    -->
+    <script src="./boot-diagnostics.js"></script>
+
+  </body>
+</html>
