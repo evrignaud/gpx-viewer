@@ -40,7 +40,25 @@ export default [
   },
   {
     // Node-side files: build config and the Electron main process.
-    files: ['vite.config.js', 'eslint.config.js', 'electron-main.js'],
+    files: ['vite.config.js', 'vitest.config.js', 'eslint.config.js', 'electron-main.js'],
+    languageOptions: {
+      globals: {
+        ...globals.node
+      }
+    }
+  },
+  {
+    // Unit tests run in jsdom under Vitest.
+    files: ['test/*.test.js'],
+    languageOptions: {
+      globals: {
+        ...globals.browser
+      }
+    }
+  },
+  {
+    // The integration check is an Electron main-process script.
+    files: ['test/integration/**/*.js'],
     languageOptions: {
       globals: {
         ...globals.node

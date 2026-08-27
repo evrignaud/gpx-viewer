@@ -10,7 +10,9 @@ function flag (name) {
 
 export const debug = flag('debug')
 
-export const appVersion = __APP_VERSION__
+// Replaced at build time by Vite's `define`. The guard keeps this module usable
+// outside a Vite build, since a missing version string is not worth throwing on.
+export const appVersion = typeof __APP_VERSION__ === 'undefined' ? 'dev' : __APP_VERSION__
 
 export const settings = {
   // Opening view. Every loaded track re-frames the map with fitBounds, so this

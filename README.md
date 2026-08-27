@@ -75,6 +75,27 @@ npm run lint
 npm run lint:fix
 ```
 
+## Tests
+
+```shell
+npm test              # unit tests, jsdom, fast
+npm run test:watch
+npm run test:integration   # builds, then drives the bundle in Electron
+npm run check         # lint + unit tests + build, what CI runs
+```
+
+The split matters. `test/*.test.js` covers the pure logic — duration and pace
+formatting, unit conversion, and the `?gpx=` URL rules — under Vitest in jsdom.
+
+`test/integration/` runs the real production bundle in a real browser engine,
+serving `dist/` over http so the Content-Security-Policy behaves the way it does
+in production. That is where this project's bugs actually were: bundling breaking
+Leaflet's icon URLs, a plugin whose ESM build never registers its factory, panels
+overlapping on a phone, unit conversion reaching the DOM. jsdom cannot see any of
+it, because it has no layout engine and Leaflet needs one. The integration run
+checks 74 things, including the two halves of issue #2 (no overlapping panels at
+390x780, and an upload button of a usable size), and exits non-zero on failure.
+
 ### Desktop app
 
 ```shell
