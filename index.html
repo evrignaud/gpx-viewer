@@ -9,16 +9,17 @@
     <title>GPX Viewer</title>
 
     <!--
-      Map tiles are served from many different hosts, so img-src has to allow
-      https: broadly; everything else is locked to this origin. `ws:` covers the
-      Vite dev server's hot-reload socket. style-src allows inline styles because
-      the dev server injects CSS as <style> elements.
+      Map tiles come from many different hosts, so img-src has to allow https:
+      broadly, and connect-src likewise for ?gpx= links. Everything else is
+      locked to this origin. `ws:` covers the Vite dev server's hot-reload
+      socket, and style-src allows inline styles because the dev server injects
+      CSS as <style> elements.
     -->
     <meta http-equiv="Content-Security-Policy"
           content="default-src 'self';
                    img-src 'self' data: blob: https:;
-                   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-                   font-src 'self' https://fonts.gstatic.com;
+                   style-src 'self' 'unsafe-inline';
+                   font-src 'self';
                    script-src 'self';
                    connect-src 'self' ws: wss: https:;
                    object-src 'none';
@@ -27,12 +28,8 @@
 
     <link rel="icon" href="./favicon.ico" sizes="any">
 
-    <!-- Served over HTTPS: the previous http:// URL was blocked as mixed
-         content on the HTTPS GitHub Pages deployment, so the font never
-         actually loaded. -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap">
+    <!-- Lato is bundled from @fontsource/lato, imported by src/main.js, so no
+         font is fetched from a third party. -->
   </head>
 
   <body>

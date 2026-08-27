@@ -1,4 +1,12 @@
 import 'normalize.css'
+
+// Lato, self-hosted. Previously fetched from fonts.googleapis.com, which meant a
+// third-party request on every visit, no font at all when offline or in the
+// packaged desktop app, and the visitor's IP handed to Google. These two files
+// carry unicode-range, so the browser only downloads the subset it needs.
+import '@fontsource/lato/400.css'
+import '@fontsource/lato/700.css'
+
 import '../styles/styles.css'
 
 import { appVersion, logger } from './config.js'

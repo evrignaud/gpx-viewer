@@ -113,6 +113,11 @@ Two things worth knowing before changing the imports:
 run before the bundle in order to report a bundle that never boots, so it sticks
 to ES5 syntax.
 
+The Lato font is bundled from `@fontsource/lato`, so map tiles are the only thing
+the page fetches from a third party. That keeps the Content-Security-Policy in
+`index.html` tight (`font-src 'self'`), and means the packaged desktop app renders
+correctly with no network at all.
+
 ## Notes on the elevation chart
 
 The chart in `src/elevation-profile.js` is written against d3 v7 rather than taken

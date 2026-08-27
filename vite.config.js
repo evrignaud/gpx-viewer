@@ -20,7 +20,11 @@ export default defineConfig({
     target: 'es2022',
     outDir: 'dist',
     assetsDir: 'assets',
-    sourcemap: true
+    sourcemap: true,
+    // Never inline font files. Base64 in the stylesheet has to be parsed before
+    // the first paint and defeats the unicode-range subsetting, which only pays
+    // off when each subset is a separate request the browser can skip.
+    assetsInlineLimit: (filePath) => (/\.(woff2?|ttf|otf|eot)$/i.test(filePath) ? false : undefined)
   },
   server: {
     // HOST=0.0.0.0 exposes the dev server on the LAN, replacing the old
