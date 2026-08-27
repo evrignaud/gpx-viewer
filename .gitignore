@@ -1,6 +1,7 @@
 node_modules
 .DS_STORE
 npm-debug.log*
+yarn-error.log*
 /dist
 /build
 /typings
@@ -8,5 +9,16 @@ npm-debug.log*
 /electron.js*
 /release
 /test/coverage
+/coverage
 /deps/
 /electron-dist/
+
+# Build tool caches
+/.vite
+/node_modules/.vite
+
+# Editors
+/.idea
+*.iml
+.vscode/*
+!.vscode/extensions.json

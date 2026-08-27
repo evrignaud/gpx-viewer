@@ -1,0 +1,10 @@
+# Normalise line endings in the repository, keep native endings in the work tree.
+* text=auto
+
+# Files that must keep LF whatever the platform.
+*.sh text eol=lf
+
+# Never touch these.
+*.png binary
+*.ico binary
+*.gpx text

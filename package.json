@@ -1,8 +1,17 @@
 {
   "name": "gpx-viewer",
   "version": "0.1.1",
-  "description": "GPX Viewer.",
+  "description": "Web viewer that loads and compares many GPX tracks at once on top of switchable map layers.",
   "main": "electron-main.js",
+  "private": true,
+  "homepage": "https://evrignaud.github.io/gpx-viewer/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evrignaud/gpx-viewer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/evrignaud/gpx-viewer/issues"
+  },
   "scripts": {
     "clean": "yarn cache clean && del-cli dist deps node_modules \"test/coverage\" bin",
     "clean:dist": "del-cli dist",
@@ -34,10 +43,16 @@
   "keywords": [
     "map",
     "viewer",
-    "gpx"
+    "gpx",
+    "leaflet",
+    "elevation",
+    "track"
   ],
-  "license": "UNLICENTED",
+  "license": "UNLICENSED",
   "author": "Etienne Vrignaud",
+  "engines": {
+    "node": ">=20.19"
+  },
   "aurelia": {
     "build": {
       "resources": []
